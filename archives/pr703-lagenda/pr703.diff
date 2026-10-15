@@ -1,0 +1,1690 @@
+diff --git a/.gitignore b/.gitignore
+index 39c8b6a5d..9150daccf 100644
+--- a/.gitignore
++++ b/.gitignore
+@@ -167,3 +167,7 @@ producers_catalog_*_report.json
+ # (data/knowledge/) se commitent, dans la PR de données.
+ data/_relecture_genres/
+ data/_lecture_genres/
++
++# Suivi des prix (prix/) : base, relevés bruts, réponses de debug et profil
++# navigateur (cookies Cloudflare) restent en local.
++data/prix/
+diff --git a/CLAUDE.md b/CLAUDE.md
+index 1d2ac2dbf..8568c57ae 100644
+--- a/CLAUDE.md
++++ b/CLAUDE.md
+@@ -7,6 +7,7 @@
+ - `CLAUDE-ANALYTICS.md` (site analytics v4) ; `CLAUDE-ARTIST-DETECTION.md`
+ - `CLAUDE-NEWSLETTER.md` : newsletter publique (`/newsletter`, `scrapers/newsletter/`, `functions/newsletter.js`). **À lire avant toute modif du rendu du mail** — le seuil de troncature de Gmail y est la contrainte structurante. Ne pas confondre avec le rapport quotidien admin (`send_email_report.py`), qui est un autre système.
+ - `CLAUDE-BILLETTERIE.md` : sonder une billetterie / écrire un scraper d'API — méthode, contrat de champs (jauge, ventes, places), fiches plateformes (Soticket, See Tickets CSS5, Mapado, Dice, pass Culture, Accor, Trium/SecuTix) et pistes déjà fermées. **À lire avant tout nouveau scraper ou nouveau sondage d'API.**
++- `prix/README.md` : suivi des prix produits (Carrefour), pipeline **indépendant** du site concerts (rien n'est lu par le build ni la CI, `data/prix/` hors git).
+ - Règles par type de fichier : `.claude/rules/` (chargées automatiquement au bon moment)
+ 
+ ## Architecture (l'essentiel)
+diff --git a/prix/README.md b/prix/README.md
+new file mode 100644
+index 000000000..a2b9a071b
+--- /dev/null
++++ b/prix/README.md
+@@ -0,0 +1,48 @@
++# Suivi des prix (Carrefour)
++
++Un pipeline indépendant du site concerts, construit sur le même principe :
++scraper → relevé brut JSON → base SQLite avec historique → rapport de ce qui a bougé.
++
++| Concerts | Prix |
++|---|---|
++| `scrapers/venues/scrape_<salle>.py` | `prix/carrefour.py` (`scrape_rayon`) |
++| registre des salles | `prix/rayons.py` (un rayon = une ligne) |
++| `data/raw/<salle>_events.json` | `data/prix/raw/<enseigne>_<rayon>_<jour>.json` |
++| `data/concerts.db` : `events` + `price_history` | `data/prix/prix.db` : `products` + `price_history` (1 ligne par produit et par jour) |
++| identité MD5 `salle\|nom\|date` | identité `carrefour:<EAN>` |
++| `scraping_report` / circuit breaker | table `scrape_runs` (ok / suspect / empty / blocked / error) |
++| garde-fou soft-delete 25 % | relevé « suspect » sous 50 % du précédent : aucune disparition déclarée |
++
++Rien ici n'est lu par `build.py`, la CI ou le déploiement. Tout `data/prix/` reste en local (gitignore).
++
++## Lancer
++
++```bash
++python prix/run.py --simulation   # données inventées, sans réseau (base à part : prix_simulation.db)
++python prix/run.py --test         # vrai site, 1re page, affiche les produits sans rien écrire
++python prix/run.py                # relevé complet, écrit en base, affiche hausses / baisses / nouveautés
++python prix/run.py --visible      # navigateur en fenêtre, pour cocher la case Cloudflare
++```
++
++Dépendances déjà dans `requirements.txt` (curl_cffi, playwright, beautifulsoup4).
++Le navigateur utilisé est le Chrome du Mac. Sans Chrome : `python -m playwright install chromium`.
++
++## Cloudflare
++
++Carrefour est derrière Cloudflare. Depuis une IP de datacenter (CI GitHub, sessions cloud),
++il sert une case « Vérifiez que vous êtes humain » : relevé impossible (constaté le 2026-10-14).
++Depuis une connexion domestique, la page passe, au pire après avoir coché la case une fois.
++Le scraper garde ses cookies dans `data/prix/navigateur/` : on coche une fois, les relevés suivants
++passent seuls tant que le cookie vit. Si la case revient en headless et qu'on est devant l'écran,
++une fenêtre s'ouvre d'elle-même. La case n'est jamais cochée automatiquement.
++
++## Si un relevé rend 0 produit
++
++La page n'a jamais pu être observée au moment d'écrire `extract.py`. Il lit donc toutes les formes
++plausibles : JSON d'API, JSON embarqué (Nuxt, `window.__X__`, JSON-LD) et, en dernier recours,
++les cartes produit du HTML. Si rien ne sort, les réponses brutes sont dans `data/prix/debug/`.
++On adapte l'extraction sur ce fichier, sans retourner sur le site :
++
++```bash
++python prix/run.py --fixture data/prix/debug/carrefour_legumes-de-saison_p0.html
++```
+diff --git a/prix/__init__.py b/prix/__init__.py
+new file mode 100644
+index 000000000..e69de29bb
+diff --git a/prix/carrefour.py b/prix/carrefour.py
+new file mode 100644
+index 000000000..dc8436815
+--- /dev/null
++++ b/prix/carrefour.py
+@@ -0,0 +1,281 @@
++"""Relevé d'un rayon carrefour.fr — l'équivalent de `scrape_venue()` côté concerts.
++
++    scrape_rayon(rayon, mode='full'|'test', method='auto'|'http'|'browser',
++                 visible=False) -> (produits, meta)
++
++Le mur à franchir (sondé le 2026-10-14) : Cloudflare sert une page « C'est une
++formalité… si vous êtes un humain ! » avec une case Turnstile à cocher, en 403,
++à toute requête venue d'une IP de datacenter — `requests`, `curl_cffi` en
++impersonation et Chromium headless compris. Depuis une connexion domestique
++(le Mac), la page passe normalement, au pire après avoir coché la case une fois.
++
++D'où la chaîne :
++  1. HTTP direct (`curl_cffi`, empreinte TLS de Chrome) : rapide, suffit si
++     Cloudflare laisse passer.
++  2. Navigateur (Playwright, Chrome installé de préférence) avec un PROFIL
++     PERSISTANT dans `data/prix/navigateur/` : le cookie `cf_clearance` obtenu
++     une fois est réutilisé aux relevés suivants. Les pages suivantes sont
++     demandées par `fetch()` DEPUIS la page (mêmes cookies, même origine).
++  3. Si Cloudflare demande la case en headless et qu'on est devant un écran,
++     on rouvre le navigateur en fenêtre visible et on attend qu'un humain
++     coche. Jamais de résolution automatique de la case.
++
++Chaque réponse brute est gardée dans `data/prix/debug/` (écrasée à chaque
++relevé) : si l'extraction rend 0 produit, c'est ce fichier qu'on regarde pour
++adapter `extract.py`.
++"""
++
++from __future__ import annotations
++
++import os
++import random
++import sys
++import time
++from pathlib import Path
++from urllib.parse import parse_qsl, urlencode, urlsplit, urlunsplit
++
++from prix import extract
++
++ROOT = Path(__file__).resolve().parent.parent
++DATA_DIR = ROOT / "data" / "prix"
++DEBUG_DIR = DATA_DIR / "debug"
++PROFILE_DIR = DATA_DIR / "navigateur"
++
++#: Garde-fou : un rayon ne dépasse pas quelques pages de 30 produits.
++MAX_PAGES = 15
++
++#: Attente que Cloudflare lève sa page d'attente : en headless elle se lève
++#: seule ou jamais ; en fenêtre visible, le temps qu'un humain coche la case.
++CHALLENGE_WAIT_HEADLESS = 25
++CHALLENGE_WAIT_VISIBLE = 180
++
++_JSON_HEADERS = {
++    "Accept": "application/json, text/plain, */*",
++    "X-Requested-With": "XMLHttpRequest",
++}
++
++_FETCH_JS = """async ([url, headers]) => {
++  const r = await fetch(url, {headers, credentials: 'include'});
++  return {status: r.status, contentType: r.headers.get('content-type') || '', body: await r.text()};
++}"""
++
++_CHALLENGE_JS = "() => !!window._cf_chl_opt || /un instant|just a moment|juste un instant/i.test(document.title)"
++
++
++class Blocked(Exception):
++    """Cloudflare a servi sa page de vérification au lieu du rayon."""
++
++
++def is_challenge(status, body: str) -> bool:
++    # `_cf_chl_opt` n'existe que sur la page de vérification. Ne PAS tester
++    # `/cdn-cgi/challenge-platform/` seul : Cloudflare l'injecte aussi dans
++    # les pages normales (script de détection passif).
++    return status in (403, 429, 503) and ("_cf_chl_opt" in body or "cf_chl_" in body)
++
++
++def page_url(url: str, n: int) -> str:
++    if n <= 1:
++        return url
++    parts = urlsplit(url)
++    query = [(k, v) for k, v in parse_qsl(parts.query) if k != "page"] + [("page", str(n))]
++    return urlunsplit(parts._replace(query=urlencode(query)))
++
++
++def _save_debug(slug: str, n: int, content_type: str, body: str):
++    DEBUG_DIR.mkdir(parents=True, exist_ok=True)
++    ext = "json" if "json" in content_type.lower() or body.lstrip()[:1] in ("{", "[") else "html"
++    (DEBUG_DIR / f"carrefour_{slug}_p{n}.{ext}").write_text(body, encoding="utf-8")
++
++
++def _proxy_url():
++    """Proxy sortant facultatif (`PRIX_PROXY_URL`, sinon `HTTPS_PROXY`). Jamais loggé."""
++    return os.environ.get("PRIX_PROXY_URL") or os.environ.get("HTTPS_PROXY") or os.environ.get("https_proxy")
++
++
++# --------------------------------------------------------------------------
++# Parcours des pages, commun aux deux méthodes
++# --------------------------------------------------------------------------
++
++def _crawl(fetch, url, slug, max_pages, log, seed=None):
++    """fetch(url) -> (status, content_type, body). Rend (produits, nb de pages lues)."""
++    products: dict = {}
++    for p in seed or []:
++        products[p["code"]] = p
++    pages = 0
++    for n in range(1, max_pages + 1):
++        status, content_type, body = fetch(page_url(url, n))
++        _save_debug(slug, n, content_type, body)
++        if is_challenge(status, body):
++            if not products:
++                raise Blocked(f"page {n} : vérification Cloudflare (HTTP {status})")
++            log(f"   page {n} : vérification Cloudflare, arrêt sur ce qui est déjà lu")
++            break
++        if status != 200:
++            if not products:
++                raise RuntimeError(f"page {n} : HTTP {status}")
++            log(f"   page {n} : HTTP {status}, arrêt")
++            break
++        found = extract.extract_products(body, content_type)
++        new = [p for p in found if p["code"] not in products]
++        products.update({p["code"]: p for p in extract.merge_products([list(products.values()), found])})
++        pages = n if found else pages
++        log(f"   page {n} : {len(found)} produits lus, {len(new)} nouveaux")
++        # page vide, ou page qui ne rapporte rien de neuf (au-delà de la 1re,
++        # que la page affichée a pu déjà couvrir) : fin du rayon
++        if not found or (not new and n > 1):
++            break
++        if n < max_pages:
++            time.sleep(random.uniform(1.5, 3.0))  # un humain ne tourne pas les pages plus vite
++    return list(products.values()), pages
++
++
++# --------------------------------------------------------------------------
++# 1. HTTP direct
++# --------------------------------------------------------------------------
++
++def _http_fetcher():
++    from curl_cffi import requests as cffi
++
++    verify = os.environ.get("CURL_CA_BUNDLE") or os.environ.get("REQUESTS_CA_BUNDLE") or True
++    proxy = os.environ.get("PRIX_PROXY_URL")
++    proxies = {"http": proxy, "https": proxy} if proxy else None
++    session = cffi.Session(impersonate="chrome124", verify=verify, proxies=proxies)
++    session.headers.update({"Accept-Language": "fr-FR,fr;q=0.9"})
++
++    def fetch(url):
++        r = session.get(url, headers=_JSON_HEADERS, timeout=30)
++        return r.status_code, r.headers.get("content-type", ""), r.text
++
++    return fetch
++
++
++# --------------------------------------------------------------------------
++# 2. Navigateur
++# --------------------------------------------------------------------------
++
++def _playwright_proxy():
++    raw = _proxy_url()
++    if not raw:
++        return None
++    parts = urlsplit(raw)
++    proxy = {"server": f"{parts.scheme}://{parts.hostname}:{parts.port}" if parts.port else f"{parts.scheme}://{parts.hostname}"}
++    if parts.username:
++        proxy["username"] = parts.username
++        proxy["password"] = parts.password or ""
++    return proxy
++
++
++def _launch(playwright, visible):
++    options = {
++        "headless": not visible,
++        "locale": "fr-FR",
++        "timezone_id": "Europe/Paris",
++        "viewport": {"width": 1366, "height": 900},
++        "args": ["--disable-blink-features=AutomationControlled"],
++    }
++    proxy = _playwright_proxy()
++    if proxy:
++        options["proxy"] = proxy
++    # Chrome installé d'abord (celui du Mac), Chromium de Playwright sinon
++    # (`python -m playwright install chromium`), ou un binaire imposé par
++    # `PRIX_BROWSER_PATH`. Un profil par moteur : leurs formats diffèrent.
++    executable = os.environ.get("PRIX_BROWSER_PATH")
++    if executable:
++        return playwright.chromium.launch_persistent_context(str(PROFILE_DIR / "chromium"),
++                                                             executable_path=executable, **options)
++    try:
++        return playwright.chromium.launch_persistent_context(str(PROFILE_DIR / "chrome"), channel="chrome", **options)
++    except Exception:
++        return playwright.chromium.launch_persistent_context(str(PROFILE_DIR / "chromium"), **options)
++
++
++def _wait_challenge(page, timeout_s) -> bool:
++    """True quand la page de vérification est levée, False au bout du délai."""
++    deadline = time.time() + timeout_s
++    while time.time() < deadline:
++        try:
++            if not page.evaluate(_CHALLENGE_JS):
++                return True
++        except Exception:  # navigation en cours : contexte JS détruit
++            pass
++        page.wait_for_timeout(1000)
++    return False
++
++
++def _crawl_browser(rayon, max_pages, visible, log):
++    from playwright.sync_api import sync_playwright
++
++    PROFILE_DIR.mkdir(parents=True, exist_ok=True)
++    with sync_playwright() as p:
++        context = _launch(p, visible)
++        try:
++            page = context.pages[0] if context.pages else context.new_page()
++            page.goto(rayon["url"], wait_until="domcontentloaded", timeout=60000)
++            wait = CHALLENGE_WAIT_VISIBLE if visible else CHALLENGE_WAIT_HEADLESS
++            if not _wait_challenge(page, wait):
++                _save_debug(rayon["slug"], 1, "text/html", page.content())
++                raise Blocked("vérification Cloudflare non levée")
++            try:
++                page.wait_for_load_state("networkidle", timeout=15000)
++            except Exception:
++                pass
++            # la page rendue d'abord : c'est ce que voit un visiteur
++            rendered = page.content()
++            _save_debug(rayon["slug"], 0, "text/html", rendered)
++            seed = extract.extract_products(rendered, "text/html")
++            log(f"   page affichée : {len(seed)} produits lus")
++
++            def fetch(url):
++                res = page.evaluate(_FETCH_JS, [url, _JSON_HEADERS])
++                return res["status"], res["contentType"], res["body"]
++
++            products, pages = _crawl(fetch, rayon["url"], rayon["slug"], max_pages, log, seed=seed)
++            return products, max(pages, 1 if seed else 0)
++        finally:
++            context.close()
++
++
++def _can_show_window() -> bool:
++    return sys.stdin.isatty() and (sys.platform == "darwin" or bool(os.environ.get("DISPLAY")))
++
++
++# --------------------------------------------------------------------------
++# Point d'entrée
++# --------------------------------------------------------------------------
++
++def scrape_rayon(rayon: dict, mode: str = "full", method: str = "auto", visible: bool = False, log=print):
++    """Produits du rayon. `mode='test'` : première page seulement."""
++    max_pages = 1 if mode == "test" else MAX_PAGES
++
++    if method in ("auto", "http") and not visible:
++        try:
++            products, pages = _crawl(_http_fetcher(), rayon["url"], rayon["slug"], max_pages, log)
++            if products or method == "http":
++                return products, {"method": "http", "pages": pages}
++            log("   HTTP direct : page reçue mais aucun produit lisible → navigateur")
++        except Blocked as e:
++            if method == "http":
++                raise
++            log(f"   🛡️  HTTP direct bloqué ({e}) → navigateur")
++        except Exception as e:  # réseau, curl_cffi absent…
++            if method == "http":
++                raise
++            log(f"   HTTP direct KO ({type(e).__name__}: {e}) → navigateur")
++
++    try:
++        products, pages = _crawl_browser(rayon, max_pages, visible, log)
++        return products, {"method": "navigateur" + (" visible" if visible else ""), "pages": pages}
++    except Blocked:
++        if visible or not _can_show_window():
++            raise
++    log("   🛡️  Cloudflare demande une vérification : une fenêtre Chrome s'ouvre,")
++    log("       coche la case « Je suis humain » (3 min max). Le cookie est gardé pour la suite.")
++    products, pages = _crawl_browser(rayon, max_pages, True, log)
++    return products, {"method": "navigateur visible", "pages": pages}
++
++
++def load_fixture(path: str):
++    """Produits d'un fichier sauvegardé (HTML ou JSON), sans réseau."""
++    body = Path(path).read_text(encoding="utf-8")
++    content_type = "application/json" if path.endswith(".json") else "text/html"
++    return extract.extract_products(body, content_type)
+diff --git a/prix/db.py b/prix/db.py
+new file mode 100644
+index 000000000..ef53ae414
+--- /dev/null
++++ b/prix/db.py
+@@ -0,0 +1,167 @@
++"""Base SQLite des prix — `data/prix/prix.db`, calquée sur `concerts.db`.
++
++    products        un produit par (enseigne, code) : l'équivalent de `events`.
++                    Identité = `carrefour:<EAN>`. Comme le `VENUE_NAME` des
++                    concerts, cette recette ne change JAMAIS : la changer coupe
++                    l'historique de chaque produit en deux.
++    price_history   un relevé par produit et par jour (Europe/Paris). Relancer
++                    le même jour remplace la ligne du jour, rien d'autre : pas
++                    de doublon, pas d'historique réécrit.
++    scrape_runs     un passage par rayon et par relevé, réussi ou non. C'est ce
++                    qui distingue « le produit a disparu » de « le relevé a
++                    raté », et ce qui dira quand le scraper casse en silence.
++
++Garde-fou repris du soft-delete des concerts : un relevé qui rend moins de la
++moitié des produits du précédent est marqué `suspect` et ne déclare aucune
++disparition — c'est le lecteur qui a raté, pas le rayon qui s'est vidé.
++"""
++
++from __future__ import annotations
++
++import sqlite3
++from pathlib import Path
++
++SUSPECT_RATIO = 0.5
++
++SCHEMA = """
++CREATE TABLE IF NOT EXISTS products (
++    id          TEXT PRIMARY KEY,
++    retailer    TEXT NOT NULL,
++    code        TEXT NOT NULL,
++    ean         TEXT,
++    name        TEXT NOT NULL,
++    brand       TEXT,
++    format      TEXT,
++    origin      TEXT,
++    url         TEXT,
++    image       TEXT,
++    rayon       TEXT,
++    first_seen  TEXT NOT NULL,
++    last_seen   TEXT NOT NULL
++);
++CREATE TABLE IF NOT EXISTS price_history (
++    product_id    TEXT NOT NULL REFERENCES products(id),
++    day           TEXT NOT NULL,
++    price         REAL NOT NULL,
++    unit_price    REAL,
++    unit          TEXT,
++    regular_price REAL,
++    promo_label   TEXT,
++    available     INTEGER,
++    recorded_at   TEXT NOT NULL,
++    PRIMARY KEY (product_id, day)
++);
++CREATE INDEX IF NOT EXISTS idx_price_history_day ON price_history(day);
++CREATE TABLE IF NOT EXISTS scrape_runs (
++    id          INTEGER PRIMARY KEY AUTOINCREMENT,
++    day         TEXT NOT NULL,
++    started_at  TEXT NOT NULL,
++    retailer    TEXT NOT NULL,
++    rayon       TEXT NOT NULL,
++    method      TEXT,
++    pages       INTEGER,
++    status      TEXT NOT NULL,
++    n_products  INTEGER NOT NULL DEFAULT 0,
++    message     TEXT
++);
++"""
++
++
++def connect(path: Path) -> sqlite3.Connection:
++    path.parent.mkdir(parents=True, exist_ok=True)
++    conn = sqlite3.connect(path)
++    conn.row_factory = sqlite3.Row
++    conn.executescript(SCHEMA)
++    return conn
++
++
++def product_id(retailer: str, code: str) -> str:
++    return f"{retailer}:{code}"
++
++
++def log_run(conn, *, day, started_at, retailer, rayon, method, pages, status, n_products, message=None):
++    conn.execute(
++        "INSERT INTO scrape_runs (day, started_at, retailer, rayon, method, pages, status, n_products, message) "
++        "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
++        (day, started_at, retailer, rayon, method, pages, status, n_products, message),
++    )
++    conn.commit()
++
++
++def _previous_run(conn, retailer, rayon, day):
++    return conn.execute(
++        "SELECT day, n_products FROM scrape_runs WHERE retailer = ? AND rayon = ? AND day < ? "
++        "AND status IN ('ok', 'suspect') ORDER BY day DESC, id DESC LIMIT 1",
++        (retailer, rayon, day),
++    ).fetchone()
++
++
++def record_snapshot(conn, *, retailer, rayon, products, day, recorded_at) -> dict:
++    """Écrit le relevé du jour et rend ce qui a bougé depuis le précédent."""
++    prev = _previous_run(conn, retailer, rayon, day)
++    suspect = bool(prev and prev["n_products"] and len(products) < prev["n_products"] * SUSPECT_RATIO)
++    diff = {"total": len(products), "prev_day": prev["day"] if prev else None, "suspect": suspect,
++            "new": [], "back": [], "up": [], "down": [], "promo_started": [], "gone": []}
++
++    seen_ids = set()
++    for p in products:
++        pid = product_id(retailer, p["code"])
++        seen_ids.add(pid)
++        before = conn.execute(
++            "SELECT price, promo_label FROM price_history WHERE product_id = ? AND day < ? ORDER BY day DESC LIMIT 1",
++            (pid, day),
++        ).fetchone()
++        known = conn.execute("SELECT first_seen FROM products WHERE id = ?", (pid,)).fetchone()
++        conn.execute(
++            """INSERT INTO products (id, retailer, code, ean, name, brand, format, origin, url, image, rayon,
++                                     first_seen, last_seen)
++               VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
++               ON CONFLICT(id) DO UPDATE SET
++                   name = excluded.name,
++                   ean = COALESCE(excluded.ean, products.ean),
++                   brand = COALESCE(excluded.brand, products.brand),
++                   format = COALESCE(excluded.format, products.format),
++                   origin = COALESCE(excluded.origin, products.origin),
++                   url = COALESCE(excluded.url, products.url),
++                   image = COALESCE(excluded.image, products.image),
++                   rayon = excluded.rayon,
++                   first_seen = MIN(products.first_seen, excluded.first_seen),
++                   last_seen = MAX(products.last_seen, excluded.last_seen)""",
++            (pid, retailer, p["code"], p.get("ean"), p["name"], p.get("brand"), p.get("format"), p.get("origin"),
++             p.get("url"), p.get("image"), rayon, day, day),
++        )
++        conn.execute(
++            """INSERT INTO price_history (product_id, day, price, unit_price, unit, regular_price, promo_label,
++                                          available, recorded_at)
++               VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
++               ON CONFLICT(product_id, day) DO UPDATE SET
++                   price = excluded.price, unit_price = excluded.unit_price, unit = excluded.unit,
++                   regular_price = excluded.regular_price, promo_label = excluded.promo_label,
++                   available = excluded.available, recorded_at = excluded.recorded_at""",
++            (pid, day, p["price"], p.get("unit_price"), p.get("unit"), p.get("regular_price"), p.get("promo_label"),
++             None if p.get("available") is None else int(p["available"]), recorded_at),
++        )
++        if known is None or known["first_seen"] >= day:  # relancer le jour même le garde « nouveau »
++            diff["new"].append(p)
++        elif before is not None:
++            if prev and not conn.execute("SELECT 1 FROM price_history WHERE product_id = ? AND day = ?",
++                                         (pid, prev["day"])).fetchone():
++                diff["back"].append(p)
++            if p["price"] > before["price"]:
++                diff["up"].append((p, before["price"]))
++            elif p["price"] < before["price"]:
++                diff["down"].append((p, before["price"]))
++            if p.get("promo_label") and not before["promo_label"]:
++                diff["promo_started"].append(p)
++
++    if prev and not suspect:
++        rows = conn.execute(
++            """SELECT p.id, p.name, ph.price FROM products p
++               JOIN price_history ph ON ph.product_id = p.id AND ph.day = ?
++               WHERE p.retailer = ? AND p.rayon = ?""",
++            (prev["day"], retailer, rayon),
++        ).fetchall()
++        diff["gone"] = [{"name": r["name"], "price": r["price"]} for r in rows if r["id"] not in seen_ids]
++
++    conn.commit()
++    return diff
+diff --git a/prix/extract.py b/prix/extract.py
+new file mode 100644
+index 000000000..12a764758
+--- /dev/null
++++ b/prix/extract.py
+@@ -0,0 +1,500 @@
++"""Extraction des produits d'une page rayon — sans réseau, testable sur un fichier.
++
++Le relevé du 2026-10-14 n'a jamais vu la vraie page : Cloudflare sert une case
++« Vérifiez que vous êtes humain » aux IP de datacenter. Ce module ne parie donc
++pas sur UNE structure, il les lit toutes et fusionne par code produit :
++
++  1. JSON (réponse d'API, `<script type="application/json">`, JSON-LD,
++     `window.__X__ = {...}`, payload Nuxt 3 `__NUXT_DATA__`) : on parcourt
++     l'arbre et on garde chaque objet qui porte un nom, un code (EAN, id
++     numérique) ET un prix quelque part sous lui. Les formes JSON:API
++     (`{"type": "product", "attributes": {...}}`) et schema.org (`offers.price`)
++     passent par le même chemin.
++  2. HTML rendu, en dernier recours : chaque lien `/p/<slug>-<EAN>` et le prix
++     écrit dans sa carte produit.
++
++Un produit sans prix n'est jamais rendu : ce qu'on suit, c'est le prix.
++"""
++
++from __future__ import annotations
++
++import html as html_lib
++import json
++import re
++from collections import deque
++from urllib.parse import urljoin
++
++BASE_URL = "https://www.carrefour.fr"
++
++_CODE_RE = re.compile(r"^\d{8,14}$")
++_NAME_KEYS = ("title", "name", "productName", "label")
++_EAN_KEYS = ("ean", "gtin13", "gtin", "ean13", "barcode", "gtin14", "gtin8")
++_BRAND_KEYS = ("brand", "brandName", "marque")
++_FORMAT_KEYS = ("format", "packaging", "quantity", "size", "conditionnement")
++_URL_KEYS = ("url", "productUrl", "link", "href")
++_ORIGIN_KEYS = ("origin", "countryOfOrigin", "originCountry", "provenance", "origine")
++_REGULAR_KEYS = ("priceBeforeDiscount", "strikethroughPrice", "originalPrice", "regularPrice",
++                 "oldPrice", "crossedPrice", "initialPrice", "basePrice", "priceWithoutDiscount")
++_UNIT_LABEL_KEYS = ("perUnitLabel", "unitPriceLabel", "pricePerUnitLabel")
++_UNIT_VALUE_KEYS = ("perUnit", "pricePerUnit", "unitPrice")
++_UNIT_NAME_KEYS = ("unitOfMeasure", "unit", "perUnitUnit")
++_AVAILABLE_KEYS = ("purchasable", "isPurchasable", "isAvailable", "available", "inStock")
++_PROMO_TEXT_KEYS = ("label", "title", "shortLabel", "description", "message", "text", "name")
++
++#: Profondeur max sous un produit pour chercher son prix (offres imbriquées).
++_PRICE_DEPTH = 8
++
++_UNITS = {
++    "kg": "KG", "kilo": "KG", "kilogramme": "KG",
++    "l": "L", "litre": "L", "lt": "L",
++    "g": "G", "100g": "100G",
++    "piece": "PIECE", "pièce": "PIECE", "pce": "PIECE", "pc": "PIECE", "u": "PIECE",
++    "unite": "PIECE", "unité": "PIECE", "botte": "BOTTE",
++}
++
++
++# --------------------------------------------------------------------------
++# Prix
++# --------------------------------------------------------------------------
++
++def _clean_text(value) -> str:
++    return re.sub(r"\s+", " ", html_lib.unescape(str(value))).strip()
++
++
++def parse_price(value):
++    """1.49 / "1,49 €" / "1€49" / {"price": 1.49} -> 1.49 ; None si illisible."""
++    if value is None or isinstance(value, bool):
++        return None
++    if isinstance(value, (int, float)):
++        return round(float(value), 2) if 0 < value < 10000 else None
++    if isinstance(value, dict):
++        for key in ("price", "value", "amount"):
++            if key in value:
++                found = parse_price(value[key])
++                if found is not None:
++                    return found
++        return None
++    if not isinstance(value, str):
++        return None
++    s = value.replace(" ", " ").replace(" ", " ")
++    m = re.search(r"(\d{1,4}[.,]\d{1,2})\s*€", s) or re.search(r"(?<![\d.,])(\d{1,4})\s?€\s?(\d{2})(?!\d)", s)
++    if m and m.lastindex == 2:
++        return float(f"{m.group(1)}.{m.group(2)}")
++    if not m:
++        m = re.fullmatch(r"\s*(\d{1,4}(?:[.,]\d{1,2})?)\s*(?:€|EUR)?\s*", s)
++    if not m:
++        return None
++    price = round(float(m.group(1).replace(",", ".")), 2)
++    return price if price > 0 else None
++
++
++def normalize_unit(unit):
++    if not unit:
++        return None
++    key = str(unit).strip().lower().rstrip(".")
++    return _UNITS.get(key, key.upper())
++
++
++def parse_unit_label(label):
++    """"1,99 € / KG" -> (1.99, "KG") ; (None, None) si illisible."""
++    if not isinstance(label, str):
++        return None, None
++    s = label.replace(" ", " ").replace(" ", " ")
++    m = re.search(r"(\d{1,4}(?:[.,]\d{1,2})?)\s*€\s*(?:/|par|le|la|l')\s*([A-Za-zéèû0-9]+)", s, re.I)
++    if not m:
++        return None, None
++    return round(float(m.group(1).replace(",", ".")), 2), normalize_unit(m.group(2))
++
++
++# --------------------------------------------------------------------------
++# Parcours JSON
++# --------------------------------------------------------------------------
++
++def _iter_dicts(node, max_depth=None):
++    """Tous les dicts de l'arbre, en largeur d'abord (le plus proche d'abord)."""
++    queue = deque([(node, 0)])
++    while queue:
++        cur, depth = queue.popleft()
++        if max_depth is not None and depth > max_depth:
++            continue
++        if isinstance(cur, dict):
++            yield cur
++            children = cur.values()
++        elif isinstance(cur, list):
++            children = cur
++        else:
++            continue
++        for child in children:
++            if isinstance(child, (dict, list)):
++                queue.append((child, depth + 1))
++
++
++def _flatten(node: dict) -> dict:
++    """JSON:API : `{"type", "id", "attributes": {...}}` -> attributs + id."""
++    attrs = node.get("attributes")
++    if isinstance(attrs, dict):
++        merged = dict(attrs)
++        merged.setdefault("_node_id", node.get("id"))
++        merged.setdefault("_node_type", node.get("type"))
++        return merged
++    return node
++
++
++def _first_str(d: dict, keys):
++    for key in keys:
++        v = d.get(key)
++        if isinstance(v, str) and v.strip():
++            return _clean_text(v)
++        if isinstance(v, dict):
++            for sub in ("name", "label", "title", "value"):
++                if isinstance(v.get(sub), str) and v[sub].strip():
++                    return _clean_text(v[sub])
++    return None
++
++
++def _code_of(d: dict):
++    for key in _EAN_KEYS:
++        v = d.get(key)
++        if isinstance(v, (int, str)) and _CODE_RE.match(str(v).strip()):
++            return str(v).strip()
++    for key in ("_node_id", "id", "sku", "productId"):
++        v = d.get(key)
++        if isinstance(v, (int, str)) and _CODE_RE.match(str(v).strip()):
++            return str(v).strip()
++    return None
++
++
++def _promo_label(value):
++    if isinstance(value, str) and 1 < len(value.strip()) < 120:
++        return _clean_text(value)
++    if isinstance(value, list):
++        for item in value:
++            found = _promo_label(item)
++            if found:
++                return found
++    if isinstance(value, dict):
++        for key in _PROMO_TEXT_KEYS:
++            if isinstance(value.get(key), str) and value[key].strip():
++                return _clean_text(value[key])
++    return None
++
++
++def _unit_from_block(block: dict, info: dict):
++    if info.get("unit_price") is not None:
++        return
++    label = _first_str(block, _UNIT_LABEL_KEYS)
++    value, unit = parse_unit_label(label) if label else (None, None)
++    if value is None:
++        for key in _UNIT_VALUE_KEYS:
++            v = block.get(key)
++            if isinstance(v, (int, float)) and not isinstance(v, bool):
++                value = round(float(v), 2)
++                break
++            if isinstance(v, str):
++                value, unit = parse_unit_label(v)
++                if value is None:
++                    value = parse_price(v)
++                if value is not None:
++                    break
++    if unit is None:
++        unit = normalize_unit(_first_str(block, _UNIT_NAME_KEYS))
++    if value is not None:
++        info["unit_price"] = value
++        info["unit"] = unit
++        info["unit_price_label"] = label
++
++
++def _price_info(node: dict) -> dict:
++    """Prix, prix au kilo, prix barré, promo, dispo : le plus proche gagne."""
++    info: dict = {}
++    for d in _iter_dicts(node, max_depth=_PRICE_DEPTH):
++        if "price" not in info and "price" in d:
++            p = d["price"]
++            if isinstance(p, dict) and parse_price(p.get("price", p.get("value"))) is not None:
++                info["price"] = parse_price(p.get("price", p.get("value")))
++                _unit_from_block(p, info)
++                _unit_from_block(d, info)
++            elif not isinstance(p, (dict, list)) and parse_price(p) is not None:
++                info["price"] = parse_price(p)
++                _unit_from_block(d, info)
++        if "price" not in info and "lowPrice" in d and parse_price(d["lowPrice"]) is not None:
++            info["price"] = parse_price(d["lowPrice"])  # schema.org AggregateOffer
++        if any(k in d for k in _UNIT_LABEL_KEYS):
++            _unit_from_block(d, info)
++        if "regular_price" not in info:
++            for key in _REGULAR_KEYS:
++                if key in d and parse_price(d[key]) is not None:
++                    info["regular_price"] = parse_price(d[key])
++                    break
++        if "promo_label" not in info:
++            for key, v in d.items():
++                low = key.lower()
++                if ("promo" in low or "discount" in low) and v:
++                    label = _promo_label(v)
++                    if label:
++                        info["promo_label"] = label
++                        break
++        if "available" not in info:
++            for key in _AVAILABLE_KEYS:
++                if isinstance(d.get(key), bool):
++                    info["available"] = d[key]
++                    break
++            else:
++                avail = d.get("availability")
++                if isinstance(avail, str) and ("InStock" in avail or "OutOfStock" in avail):
++                    info["available"] = "InStock" in avail
++    if info.get("regular_price") is not None and info.get("price") is not None \
++            and info["regular_price"] <= info["price"]:
++        info.pop("regular_price")
++    return info
++
++
++def _image_of(node: dict):
++    for d in _iter_dicts(node, max_depth=4):
++        for key, v in d.items():
++            low = key.lower()
++            if not any(t in low for t in ("image", "media", "picture", "visual", "thumbnail")):
++                continue
++            stack = [v]
++            while stack:
++                cur = stack.pop()
++                if isinstance(cur, str) and re.match(r"^(https?:)?//|^/", cur) \
++                        and re.search(r"\.(jpe?g|png|webp|avif)|media", cur, re.I):
++                    return urljoin(BASE_URL, cur)
++                if isinstance(cur, dict):
++                    stack.extend(cur.values())
++                elif isinstance(cur, list):
++                    stack.extend(reversed(cur))
++    return None
++
++
++def _product_from_node(node: dict):
++    d = _flatten(node)
++    name = _first_str(d, _NAME_KEYS)
++    if not name or not (2 <= len(name) <= 200):
++        return None
++    code = _code_of(d)
++    if not code:
++        return None
++    info = _price_info(d)
++    if info.get("price") is None:
++        return None
++    url = _first_str(d, _URL_KEYS)
++    if not url and isinstance(d.get("slug"), str):
++        slug = d["slug"].strip("/")
++        url = f"/p/{slug}" if slug.endswith(code) else f"/p/{slug}-{code}"
++    return {
++        "code": code,
++        "ean": code if len(code) in (8, 12, 13, 14) else None,
++        "name": name,
++        "brand": _first_str(d, _BRAND_KEYS),
++        "format": _first_str(d, _FORMAT_KEYS),
++        "origin": _first_str(d, _ORIGIN_KEYS),
++        "price": info["price"],
++        "unit_price": info.get("unit_price"),
++        "unit": info.get("unit"),
++        "unit_price_label": info.get("unit_price_label"),
++        "regular_price": info.get("regular_price"),
++        "promo_label": info.get("promo_label"),
++        "available": info.get("available"),
++        "url": urljoin(BASE_URL, url) if url else None,
++        "image": _image_of(d),
++    }
++
++
++def products_from_json(data) -> list[dict]:
++    found = []
++    for node in _iter_dicts(data):
++        product = _product_from_node(node)
++        if product:
++            found.append(product)
++    return merge_products([found])
++
++
++# --------------------------------------------------------------------------
++# JSON embarqué dans le HTML
++# --------------------------------------------------------------------------
++
++_SCRIPT_RE = re.compile(r"<script\b([^>]*)>(.*?)</script>", re.S | re.I)
++_WINDOW_ASSIGN_RE = re.compile(r"window(?:\.|\[[\"'])(__[A-Za-z0-9_]+__)(?:[\"']\])?\s*=\s*")
++
++
++def _devalue_unflatten(flat: list):
++    """Payload Nuxt 3 (`devalue`) : tableau plat où chaque valeur est un index."""
++    cache: dict = {}
++
++    def hydrate(index):
++        if not isinstance(index, int) or isinstance(index, bool):
++            return index
++        if index < 0:
++            return None
++        if index in cache:
++            return cache[index]
++        if index >= len(flat):
++            return None
++        value = flat[index]
++        if isinstance(value, list):
++            if value and isinstance(value[0], str):
++                tag = value[0]
++                if tag in ("Date", "RegExp", "BigInt"):
++                    cache[index] = value[1] if len(value) > 1 else None
++                elif tag in ("Set",):
++                    cache[index] = out = []
++                    out.extend(hydrate(i) for i in value[1:])
++                elif tag in ("Map", "null", "Object"):
++                    cache[index] = out = {}
++                    pairs = value[1:]
++                    for i in range(0, len(pairs) - 1, 2):
++                        out[str(hydrate(pairs[i]))] = hydrate(pairs[i + 1])
++                else:  # Reactive, ShallowReactive, Ref, EmptyRef, NuxtError…
++                    cache[index] = None
++                    cache[index] = hydrate(value[1]) if len(value) > 1 else None
++                return cache[index]
++            cache[index] = out = []
++            out.extend(hydrate(i) for i in value)
++            return out
++        if isinstance(value, dict):
++            cache[index] = out = {}
++            for key, i in value.items():
++                out[key] = hydrate(i)
++            return out
++        cache[index] = value
++        return value
++
++    return hydrate(0)
++
++
++def json_documents_from_html(html: str) -> list:
++    """Chaque document JSON lisible embarqué dans la page."""
++    docs = []
++    decoder = json.JSONDecoder()
++    for attrs, body in _SCRIPT_RE.findall(html):
++        body = body.strip()
++        if not body:
++            continue
++        attrs_low = attrs.lower()
++        if "json" in attrs_low:
++            try:
++                data = json.loads(html_lib.unescape(body) if body.startswith("&") else body)
++            except ValueError:
++                continue
++            if "__nuxt_data__" in attrs_low or "data-nuxt-data" in attrs_low:
++                try:
++                    data = _devalue_unflatten(data)
++                except (RecursionError, TypeError, IndexError):
++                    continue
++            docs.append(data)
++            continue
++        for m in _WINDOW_ASSIGN_RE.finditer(body):
++            try:
++                data, _ = decoder.raw_decode(body, m.end())
++            except ValueError:
++                continue
++            docs.append(data)
++    return docs
++
++
++# --------------------------------------------------------------------------
++# HTML rendu (dernier recours)
++# --------------------------------------------------------------------------
++
++_PRODUCT_HREF_RE = re.compile(r"/p/[^?#\"']*?-(\d{8,14})(?:[/?#]|$)")
++_UNIT_IN_TEXT_RE = re.compile(r"\d{1,4}(?:[.,]\d{1,2})?\s*€\s*/\s*[A-Za-zéèû0-9]+", re.I)
++_PROMO_IN_TEXT_RE = re.compile(r"(-\s?\d{1,2}\s?%(?:\s+sur\s+le\s+\d+\s?(?:e|ème|eme))?|"
++                               r"\d+\s?(?:e|ème|eme)\s?(?:à|a)\s?-?\s?\d{1,2}\s?%|"
++                               r"\d+\s?(?:\+|achetés?,?)\s?\d+\s?offerts?)", re.I)
++
++
++def products_from_dom(html: str) -> list[dict]:
++    from bs4 import BeautifulSoup
++
++    soup = BeautifulSoup(html, "html.parser")
++    found: dict = {}
++    for a in soup.find_all("a", href=True):
++        m = _PRODUCT_HREF_RE.search(a["href"])
++        if not m or m.group(1) in found:
++            continue
++        code = m.group(1)
++        card, node = None, a
++        for _ in range(8):  # remonte jusqu'à la carte produit
++            node = node.parent
++            if node is None or node.name in ("body", "html"):
++                break
++            if node.name in ("article", "li"):
++                card = node
++                break
++            if card is None and "€" in node.get_text(" ", strip=True):
++                card = node
++        if card is None:
++            continue
++        text = card.get_text(" ", strip=True).replace(" ", " ").replace(" ", " ")
++        unit_match = _UNIT_IN_TEXT_RE.search(text)
++        unit_price, unit = parse_unit_label(unit_match.group(0)) if unit_match else (None, None)
++        prices = [parse_price(p) for p in re.findall(r"\d{1,4}[.,]\d{2}\s*€|\d{1,4}\s?€\s?\d{2}(?!\d)",
++                                                      _UNIT_IN_TEXT_RE.sub(" ", text))]
++        prices = [p for p in prices if p is not None]
++        if not prices:
++            continue
++        heading = card.find(["h2", "h3", "h4"])
++        img = card.find("img")
++        name = (a.get("title") or a.get("aria-label") or (heading.get_text(" ", strip=True) if heading else "")
++                or a.get_text(" ", strip=True) or (img.get("alt") if img else "") or "")
++        name = _clean_text(name)
++        if not name:
++            continue
++        promo = _PROMO_IN_TEXT_RE.search(text)
++        image = (img.get("src") or img.get("data-src")) if img else None
++        found[code] = {
++            "code": code,
++            "ean": code if len(code) in (8, 12, 13, 14) else None,
++            "name": name,
++            "brand": None,
++            "format": None,
++            "origin": None,
++            "price": prices[0],
++            # deux prix dans la carte = prix promo + prix barré, le plus haut est le barré
++            "regular_price": max(prices[1:]) if len(prices) > 1 and max(prices[1:]) > prices[0] else None,
++            "unit_price": unit_price,
++            "unit": unit,
++            "unit_price_label": unit_match.group(0) if unit_match else None,
++            "promo_label": _clean_text(promo.group(0)) if promo else None,
++            "available": None,
++            "url": urljoin(BASE_URL, a["href"]),
++            "image": urljoin(BASE_URL, image) if image and not image.startswith("data:") else None,
++        }
++    return list(found.values())
++
++
++# --------------------------------------------------------------------------
++# Point d'entrée
++# --------------------------------------------------------------------------
++
++def merge_products(lists) -> list[dict]:
++    """Fusion par code, la première source non vide gagne champ par champ."""
++    merged: dict = {}
++    for products in lists:
++        for p in products:
++            cur = merged.get(p["code"])
++            if cur is None:
++                merged[p["code"]] = dict(p)
++                continue
++            for key, value in p.items():
++                if cur.get(key) is None and value is not None:
++                    cur[key] = value
++    return list(merged.values())
++
++
++def extract_products(body: str, content_type: str = "") -> list[dict]:
++    """Produits d'une réponse (JSON ou HTML), quelle que soit sa forme."""
++    text = body.lstrip()
++    if "json" in (content_type or "").lower() or text[:1] in ("{", "["):
++        try:
++            return products_from_json(json.loads(text))
++        except ValueError:
++            pass
++    from_json = [products_from_json(doc) for doc in json_documents_from_html(body)]
++    from_json = merge_products(from_json)
++    if from_json:
++        # le DOM complète (prix barré, promo affichée) sans jamais remplacer
++        return merge_products([from_json, products_from_dom(body)])
++    return products_from_dom(body)
+diff --git a/prix/fixtures/carrefour_simulation.json b/prix/fixtures/carrefour_simulation.json
+new file mode 100644
+index 000000000..bb21365e9
+--- /dev/null
++++ b/prix/fixtures/carrefour_simulation.json
+@@ -0,0 +1,425 @@
++{
++ "_simulation": "Données INVENTÉES pour voir tourner le pipeline sans réseau. Forme supposée de la réponse JSON de carrefour.fr, jamais observée (Cloudflare).",
++ "data": [
++  {
++   "type": "product",
++   "id": "2000000000010",
++   "attributes": {
++    "ean": "2000000000010",
++    "title": "Courge butternut",
++    "brand": "Carrefour",
++    "format": "la pièce de 1,2 kg environ",
++    "slug": "courge-butternut-carrefour-2000000000010",
++    "origin": "France",
++    "images": {
++     "main": "https://media.carrefour.fr/medias/simulation/2000000000010.jpg"
++    },
++    "offers": {
++     "2000000000010": {
++      "simulation-offre": {
++       "type": "offer",
++       "id": "simulation-2000000000010",
++       "attributes": {
++        "price": {
++         "price": 2.39,
++         "perUnitLabel": "1,99 € / KG",
++         "perUnit": 1.99,
++         "unitOfMeasure": "KG"
++        },
++        "availability": {
++         "purchasable": true
++        }
++       }
++      }
++     }
++    }
++   }
++  },
++  {
++   "type": "product",
++   "id": "2000000000020",
++   "attributes": {
++    "ean": "2000000000020",
++    "title": "Potimarron",
++    "brand": "Carrefour",
++    "format": "la pièce de 1 kg environ",
++    "slug": "potimarron-carrefour-2000000000020",
++    "origin": "France",
++    "images": {
++     "main": "https://media.carrefour.fr/medias/simulation/2000000000020.jpg"
++    },
++    "offers": {
++     "2000000000020": {
++      "simulation-offre": {
++       "type": "offer",
++       "id": "simulation-2000000000020",
++       "attributes": {
++        "price": {
++         "price": 2.49,
++         "perUnitLabel": "2,49 € / KG",
++         "perUnit": 2.49,
++         "unitOfMeasure": "KG"
++        },
++        "availability": {
++         "purchasable": true
++        }
++       }
++      }
++     }
++    }
++   }
++  },
++  {
++   "type": "product",
++   "id": "2000000000030",
++   "attributes": {
++    "ean": "2000000000030",
++    "title": "Poireaux",
++    "brand": "Carrefour",
++    "format": "la botte de 1 kg",
++    "slug": "poireaux-carrefour-2000000000030",
++    "origin": "France",
++    "images": {
++     "main": "https://media.carrefour.fr/medias/simulation/2000000000030.jpg"
++    },
++    "offers": {
++     "2000000000030": {
++      "simulation-offre": {
++       "type": "offer",
++       "id": "simulation-2000000000030",
++       "attributes": {
++        "price": {
++         "price": 2.29,
++         "perUnitLabel": "2,29 € / KG",
++         "perUnit": 2.29,
++         "unitOfMeasure": "KG"
++        },
++        "availability": {
++         "purchasable": true
++        }
++       }
++      }
++     }
++    }
++   }
++  },
++  {
++   "type": "product",
++   "id": "2000000000040",
++   "attributes": {
++    "ean": "2000000000040",
++    "title": "Carottes",
++    "brand": "Carrefour",
++    "format": "le sachet de 1 kg",
++    "slug": "carottes-carrefour-2000000000040",
++    "origin": "France",
++    "images": {
++     "main": "https://media.carrefour.fr/medias/simulation/2000000000040.jpg"
++    },
++    "offers": {
++     "2000000000040": {
++      "simulation-offre": {
++       "type": "offer",
++       "id": "simulation-2000000000040",
++       "attributes": {
++        "price": {
++         "price": 1.49,
++         "perUnitLabel": "1,49 € / KG",
++         "perUnit": 1.49,
++         "unitOfMeasure": "KG"
++        },
++        "availability": {
++         "purchasable": true
++        }
++       }
++      }
++     }
++    }
++   }
++  },
++  {
++   "type": "product",
++   "id": "2000000000050",
++   "attributes": {
++    "ean": "2000000000050",
++    "title": "Chou-fleur",
++    "brand": "Carrefour",
++    "format": "la pièce",
++    "slug": "chou-fleur-carrefour-2000000000050",
++    "origin": "France",
++    "images": {
++     "main": "https://media.carrefour.fr/medias/simulation/2000000000050.jpg"
++    },
++    "offers": {
++     "2000000000050": {
++      "simulation-offre": {
++       "type": "offer",
++       "id": "simulation-2000000000050",
++       "attributes": {
++        "price": {
++         "price": 2.19,
++         "perUnitLabel": "2,19 € / PIECE",
++         "perUnit": 2.19,
++         "unitOfMeasure": "PIECE"
++        },
++        "availability": {
++         "purchasable": true
++        },
++        "promotion": {
++         "label": "-20 % sur le 2ème"
++        }
++       }
++      }
++     }
++    }
++   }
++  },
++  {
++   "type": "product",
++   "id": "2000000000060",
++   "attributes": {
++    "ean": "2000000000060",
++    "title": "Céleri rave",
++    "brand": "Carrefour",
++    "format": "la pièce de 800 g environ",
++    "slug": "celeri-rave-carrefour-2000000000060",
++    "origin": "France",
++    "images": {
++     "main": "https://media.carrefour.fr/medias/simulation/2000000000060.jpg"
++    },
++    "offers": {
++     "2000000000060": {
++      "simulation-offre": {
++       "type": "offer",
++       "id": "simulation-2000000000060",
++       "attributes": {
++        "price": {
++         "price": 1.99,
++         "perUnitLabel": "2,49 € / KG",
++         "perUnit": 2.49,
++         "unitOfMeasure": "KG"
++        },
++        "availability": {
++         "purchasable": true
++        }
++       }
++      }
++     }
++    }
++   }
++  },
++  {
++   "type": "product",
++   "id": "2000000000070",
++   "attributes": {
++    "ean": "2000000000070",
++    "title": "Panais",
++    "brand": "Carrefour",
++    "format": "la barquette de 500 g",
++    "slug": "panais-carrefour-2000000000070",
++    "origin": "France",
++    "images": {
++     "main": "https://media.carrefour.fr/medias/simulation/2000000000070.jpg"
++    },
++    "offers": {
++     "2000000000070": {
++      "simulation-offre": {
++       "type": "offer",
++       "id": "simulation-2000000000070",
++       "attributes": {
++        "price": {
++         "price": 1.89,
++         "perUnitLabel": "3,78 € / KG",
++         "perUnit": 3.78,
++         "unitOfMeasure": "KG"
++        },
++        "availability": {
++         "purchasable": true
++        }
++       }
++      }
++     }
++    }
++   }
++  },
++  {
++   "type": "product",
++   "id": "2000000000080",
++   "attributes": {
++    "ean": "2000000000080",
++    "title": "Champignons de Paris blancs",
++    "brand": "Carrefour",
++    "format": "la barquette de 500 g",
++    "slug": "champignons-de-paris-blancs-carrefour-2000000000080",
++    "origin": "France",
++    "images": {
++     "main": "https://media.carrefour.fr/medias/simulation/2000000000080.jpg"
++    },
++    "offers": {
++     "2000000000080": {
++      "simulation-offre": {
++       "type": "offer",
++       "id": "simulation-2000000000080",
++       "attributes": {
++        "price": {
++         "price": 2.25,
++         "perUnitLabel": "4,50 € / KG",
++         "perUnit": 4.5,
++         "unitOfMeasure": "KG"
++        },
++        "availability": {
++         "purchasable": true
++        },
++        "promotion": {
++         "label": "-25 %",
++         "priceBeforeDiscount": 2.99
++        }
++       }
++      }
++     }
++    }
++   }
++  },
++  {
++   "type": "product",
++   "id": "2000000000090",
++   "attributes": {
++    "ean": "2000000000090",
++    "title": "Betteraves rouges cuites",
++    "brand": "Carrefour",
++    "format": "le sachet de 500 g",
++    "slug": "betteraves-rouges-cuites-carrefour-2000000000090",
++    "origin": "France",
++    "images": {
++     "main": "https://media.carrefour.fr/medias/simulation/2000000000090.jpg"
++    },
++    "offers": {
++     "2000000000090": {
++      "simulation-offre": {
++       "type": "offer",
++       "id": "simulation-2000000000090",
++       "attributes": {
++        "price": {
++         "price": 1.15,
++         "perUnitLabel": "2,30 € / KG",
++         "perUnit": 2.3,
++         "unitOfMeasure": "KG"
++        },
++        "availability": {
++         "purchasable": true
++        }
++       }
++      }
++     }
++    }
++   }
++  },
++  {
++   "type": "product",
++   "id": "2000000000100",
++   "attributes": {
++    "ean": "2000000000100",
++    "title": "Patates douces",
++    "brand": "Carrefour",
++    "format": "le filet de 1 kg",
++    "slug": "patates-douces-carrefour-2000000000100",
++    "origin": "Espagne",
++    "images": {
++     "main": "https://media.carrefour.fr/medias/simulation/2000000000100.jpg"
++    },
++    "offers": {
++     "2000000000100": {
++      "simulation-offre": {
++       "type": "offer",
++       "id": "simulation-2000000000100",
++       "attributes": {
++        "price": {
++         "price": 2.99,
++         "perUnitLabel": "2,99 € / KG",
++         "perUnit": 2.99,
++         "unitOfMeasure": "KG"
++        },
++        "availability": {
++         "purchasable": true
++        }
++       }
++      }
++     }
++    }
++   }
++  },
++  {
++   "type": "product",
++   "id": "2000000000110",
++   "attributes": {
++    "ean": "2000000000110",
++    "title": "Chou de Bruxelles",
++    "brand": "Carrefour",
++    "format": "le sachet de 500 g",
++    "slug": "chou-de-bruxelles-carrefour-2000000000110",
++    "origin": "France",
++    "images": {
++     "main": "https://media.carrefour.fr/medias/simulation/2000000000110.jpg"
++    },
++    "offers": {
++     "2000000000110": {
++      "simulation-offre": {
++       "type": "offer",
++       "id": "simulation-2000000000110",
++       "attributes": {
++        "price": {
++         "price": 2.09,
++         "perUnitLabel": "4,18 € / KG",
++         "perUnit": 4.18,
++         "unitOfMeasure": "KG"
++        },
++        "availability": {
++         "purchasable": true
++        }
++       }
++      }
++     }
++    }
++   }
++  },
++  {
++   "type": "product",
++   "id": "2000000000120",
++   "attributes": {
++    "ean": "2000000000120",
++    "title": "Navets",
++    "brand": "Carrefour",
++    "format": "la botte de 750 g",
++    "slug": "navets-carrefour-2000000000120",
++    "origin": "France",
++    "images": {
++     "main": "https://media.carrefour.fr/medias/simulation/2000000000120.jpg"
++    },
++    "offers": {
++     "2000000000120": {
++      "simulation-offre": {
++       "type": "offer",
++       "id": "simulation-2000000000120",
++       "attributes": {
++        "price": {
++         "price": 1.79,
++         "perUnitLabel": "2,39 € / KG",
++         "perUnit": 2.39,
++         "unitOfMeasure": "KG"
++        },
++        "availability": {
++         "purchasable": true
++        }
++       }
++      }
++     }
++    }
++   }
++  }
++ ],
++ "meta": {
++  "total": 12,
++  "itemsPerPage": 30,
++  "currentPage": 1
++ }
++}
+\ No newline at end of file
+diff --git a/prix/rayons.py b/prix/rayons.py
+new file mode 100644
+index 000000000..91ca9b0e9
+--- /dev/null
++++ b/prix/rayons.py
+@@ -0,0 +1,15 @@
++"""Rayons suivis — l'équivalent du registre des salles côté concerts.
++
++Ajouter un rayon = ajouter une ligne. Le `slug` sert à comparer un relevé au
++précédent (disparitions, relevé suspect) : ne jamais le renommer une fois le
++rayon relevé, sinon le rayon repart d'un historique vide.
++"""
++
++RAYONS = [
++    {
++        "retailer": "carrefour",
++        "slug": "legumes-de-saison",
++        "label": "Légumes de saison",
++        "url": "https://www.carrefour.fr/r/fruits-et-legumes/legumes/legumes-de-saison",
++    },
++]
+diff --git a/prix/run.py b/prix/run.py
+new file mode 100644
+index 000000000..462ab2386
+--- /dev/null
++++ b/prix/run.py
+@@ -0,0 +1,184 @@
++#!/usr/bin/env python3
++"""Relevé des prix — un passage sur chaque rayon de `rayons.py`.
++
++    python prix/run.py                   relevé complet, écrit en base, affiche ce qui a bougé
++    python prix/run.py --test            1re page seulement, affiche les produits, n'écrit rien
++    python prix/run.py --visible         navigateur en fenêtre (cocher la case Cloudflare)
++    python prix/run.py --simulation      données inventées, sans réseau (base à part)
++    python prix/run.py --fixture F       extrait un fichier sauvegardé (data/prix/debug/…), n'écrit rien
++
++`PRIX_MODE=simulation` équivaut à `--simulation`. Code de sortie 1 si un rayon
++n'a pas pu être relevé (pour qu'un lancement planifié le voie).
++
++Sorties :
++    data/prix/prix.db                         la base (prix_simulation.db en simulation)
++    data/prix/raw/<enseigne>_<rayon>_<jour>.json   le relevé brut du jour
++    data/prix/debug/                          dernières réponses brutes (si 0 produit, c'est là qu'on regarde)
++"""
++
++from __future__ import annotations
++
++import argparse
++import json
++import os
++import random
++import sys
++from datetime import datetime
++from pathlib import Path
++from zoneinfo import ZoneInfo
++
++sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
++
++from prix import carrefour, db  # noqa: E402
++from prix.rayons import RAYONS  # noqa: E402
++
++PARIS = ZoneInfo("Europe/Paris")
++DATA_DIR = carrefour.DATA_DIR
++SIMULATION_FIXTURE = Path(__file__).resolve().parent / "fixtures" / "carrefour_simulation.json"
++
++
++def euros(value) -> str:
++    return "—" if value is None else f"{value:.2f}".replace(".", ",") + " €"
++
++
++def simulate(day: str):
++    """Le jeu inventé, avec des prix qui bougent d'un jour à l'autre (déterministe)."""
++    products = carrefour.load_fixture(str(SIMULATION_FIXTURE))
++    for p in products:
++        rnd = random.Random(f"{day}|{p['code']}")
++        if rnd.random() < 0.3:
++            factor = rnd.choice([0.9, 0.95, 1.05, 1.1])
++            p["price"] = round(p["price"] * factor, 2)
++            if p.get("unit_price"):
++                p["unit_price"] = round(p["unit_price"] * factor, 2)
++    if random.Random(f"{day}|absent").random() < 0.4:
++        products.pop(random.Random(day).randrange(len(products)))
++    return products, {"method": "simulation", "pages": 1}
++
++
++def print_products(products):
++    for p in sorted(products, key=lambda x: x["name"].lower()):
++        unit = f"{euros(p['unit_price'])}/{p['unit']}" if p.get("unit_price") and p.get("unit") else ""
++        promo = f"  🏷️  {p['promo_label']}" if p.get("promo_label") else ""
++        barre = f" (au lieu de {euros(p['regular_price'])})" if p.get("regular_price") else ""
++        print(f"   {p['name'][:40]:<40} {(p.get('format') or '')[:28]:<28} {euros(p['price']):>9}{barre} {unit}{promo}")
++
++
++def print_diff(diff):
++    if diff["prev_day"] is None:
++        print("   1er relevé de ce rayon : rien à comparer pour l'instant.")
++        return
++    print(f"   Depuis le {diff['prev_day']} :")
++    if diff["suspect"]:
++        print("   ⚠️  Relevé SUSPECT : moins de la moitié des produits du précédent. Aucune disparition déclarée.")
++    for p in diff["new"]:
++        print(f"   🆕 {p['name']} — {euros(p['price'])}")
++    for p in diff["back"]:
++        print(f"   🔙 {p['name']} revient au rayon — {euros(p['price'])}")
++    for p, old in diff["up"]:
++        print(f"   📈 {p['name']} : {euros(old)} → {euros(p['price'])} ({(p['price'] / old - 1) * 100:+.0f} %)")
++    for p, old in diff["down"]:
++        print(f"   📉 {p['name']} : {euros(old)} → {euros(p['price'])} ({(p['price'] / old - 1) * 100:+.0f} %)")
++    for p in diff["promo_started"]:
++        print(f"   🏷️  {p['name']} passe en promo : {p['promo_label']}")
++    for g in diff["gone"]:
++        print(f"   👋 {g['name']} n'est plus au rayon (dernier prix {euros(g['price'])})")
++    if not any(diff[k] for k in ("new", "back", "up", "down", "promo_started", "gone")):
++        print("   Aucun changement.")
++
++
++def save_raw(rayon, day, products, meta, scraped_at):
++    raw_dir = DATA_DIR / "raw"
++    raw_dir.mkdir(parents=True, exist_ok=True)
++    path = raw_dir / f"{rayon['retailer']}_{rayon['slug']}_{day}.json"
++    payload = {"retailer": rayon["retailer"], "rayon": rayon["slug"], "url": rayon["url"], "day": day,
++               "scraped_at": scraped_at, **meta, "products": products}
++    path.write_text(json.dumps(payload, ensure_ascii=False, indent=1), encoding="utf-8")
++    return path
++
++
++def main() -> int:
++    parser = argparse.ArgumentParser(description="Relevé des prix des rayons suivis.")
++    parser.add_argument("--test", action="store_true", help="1re page seulement, n'écrit rien")
++    parser.add_argument("--visible", action="store_true", help="navigateur en fenêtre visible")
++    parser.add_argument("--simulation", action="store_true", help="données inventées, sans réseau")
++    parser.add_argument("--fixture", help="extraire un fichier sauvegardé au lieu d'aller sur le site")
++    parser.add_argument("--method", choices=("auto", "http", "browser"), default="auto")
++    parser.add_argument("--rayon", help="slug d'un seul rayon (défaut : tous)")
++    parser.add_argument("--day", help="jour du relevé YYYY-MM-DD (défaut : aujourd'hui, heure de Paris)")
++    args = parser.parse_args()
++
++    simulation = args.simulation or os.environ.get("PRIX_MODE") == "simulation"
++    dry_run = args.test or bool(args.fixture)
++    now = datetime.now(PARIS)
++    day = args.day or now.strftime("%Y-%m-%d")
++    rayons = [r for r in RAYONS if not args.rayon or r["slug"] == args.rayon]
++    if not rayons:
++        print(f"❌ Rayon inconnu : {args.rayon}. Connus : {', '.join(r['slug'] for r in RAYONS)}")
++        return 2
++
++    db_path = DATA_DIR / ("prix_simulation.db" if simulation else "prix.db")
++    if simulation:
++        print(f"🧪 Mode simulation : données inventées, base {db_path.relative_to(carrefour.ROOT)}")
++    conn = None if dry_run else db.connect(db_path)
++    failures = 0
++
++    for rayon in rayons:
++        started = datetime.now(PARIS).isoformat(timespec="seconds")
++        print(f"\n🛒 {rayon['retailer'].capitalize()} — {rayon['label']}")
++        try:
++            if simulation:
++                products, meta = simulate(day)
++            elif args.fixture:
++                products, meta = carrefour.load_fixture(args.fixture), {"method": "fichier", "pages": 1}
++            else:
++                products, meta = carrefour.scrape_rayon(rayon, mode="test" if args.test else "full",
++                                                        method=args.method, visible=args.visible)
++        except carrefour.Blocked as e:
++            failures += 1
++            print(f"   ❌ Bloqué par Cloudflare ({e}).")
++            print("      Depuis ton Mac : python prix/run.py --visible, coche la case une fois ;")
++            print("      le cookie est gardé dans data/prix/navigateur/ pour les relevés suivants.")
++            if conn:
++                db.log_run(conn, day=day, started_at=started, retailer=rayon["retailer"], rayon=rayon["slug"],
++                           method=None, pages=0, status="blocked", n_products=0, message=str(e))
++            continue
++        except Exception as e:
++            failures += 1
++            print(f"   ❌ Échec : {type(e).__name__}: {e}")
++            if conn:
++                db.log_run(conn, day=day, started_at=started, retailer=rayon["retailer"], rayon=rayon["slug"],
++                           method=None, pages=0, status="error", n_products=0, message=f"{type(e).__name__}: {e}")
++            continue
++
++        print(f"   {len(products)} produits ({meta['pages']} page(s), via {meta['method']})")
++        if not products:
++            failures += 1
++            print("   ⚠️  Aucun produit lisible. Réponses brutes gardées dans data/prix/debug/ :")
++            print("      c'est ce fichier qu'il faut regarder pour adapter prix/extract.py.")
++            if conn:
++                db.log_run(conn, day=day, started_at=started, retailer=rayon["retailer"], rayon=rayon["slug"],
++                           method=meta["method"], pages=meta["pages"], status="empty", n_products=0)
++            continue
++
++        if dry_run:
++            print_products(products)
++            print("   (mode test : rien n'est écrit en base)")
++            continue
++
++        raw_path = save_raw(rayon, day, products, meta, started)
++        diff = db.record_snapshot(conn, retailer=rayon["retailer"], rayon=rayon["slug"], products=products,
++                                  day=day, recorded_at=started)
++        db.log_run(conn, day=day, started_at=started, retailer=rayon["retailer"], rayon=rayon["slug"],
++                   method=meta["method"], pages=meta["pages"], status="suspect" if diff["suspect"] else "ok",
++                   n_products=len(products))
++        print(f"   Relevé brut : {raw_path.relative_to(carrefour.ROOT)}")
++        print_diff(diff)
++
++    if conn:
++        conn.close()
++    return 1 if failures else 0
++
++
++if __name__ == "__main__":
++    sys.exit(main())

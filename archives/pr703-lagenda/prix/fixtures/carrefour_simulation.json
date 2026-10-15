@@ -1,0 +1,425 @@
+{
+ "_simulation": "Données INVENTÉES pour voir tourner le pipeline sans réseau. Forme supposée de la réponse JSON de carrefour.fr, jamais observée (Cloudflare).",
+ "data": [
+  {
+   "type": "product",
+   "id": "2000000000010",
+   "attributes": {
+    "ean": "2000000000010",
+    "title": "Courge butternut",
+    "brand": "Carrefour",
+    "format": "la pièce de 1,2 kg environ",
+    "slug": "courge-butternut-carrefour-2000000000010",
+    "origin": "France",
+    "images": {
+     "main": "https://media.carrefour.fr/medias/simulation/2000000000010.jpg"
+    },
+    "offers": {
+     "2000000000010": {
+      "simulation-offre": {
+       "type": "offer",
+       "id": "simulation-2000000000010",
+       "attributes": {
+        "price": {
+         "price": 2.39,
+         "perUnitLabel": "1,99 € / KG",
+         "perUnit": 1.99,
+         "unitOfMeasure": "KG"
+        },
+        "availability": {
+         "purchasable": true
+        }
+       }
+      }
+     }
+    }
+   }
+  },
+  {
+   "type": "product",
+   "id": "2000000000020",
+   "attributes": {
+    "ean": "2000000000020",
+    "title": "Potimarron",
+    "brand": "Carrefour",
+    "format": "la pièce de 1 kg environ",
+    "slug": "potimarron-carrefour-2000000000020",
+    "origin": "France",
+    "images": {
+     "main": "https://media.carrefour.fr/medias/simulation/2000000000020.jpg"
+    },
+    "offers": {
+     "2000000000020": {
+      "simulation-offre": {
+       "type": "offer",
+       "id": "simulation-2000000000020",
+       "attributes": {
+        "price": {
+         "price": 2.49,
+         "perUnitLabel": "2,49 € / KG",
+         "perUnit": 2.49,
+         "unitOfMeasure": "KG"
+        },
+        "availability": {
+         "purchasable": true
+        }
+       }
+      }
+     }
+    }
+   }
+  },
+  {
+   "type": "product",
+   "id": "2000000000030",
+   "attributes": {
+    "ean": "2000000000030",
+    "title": "Poireaux",
+    "brand": "Carrefour",
+    "format": "la botte de 1 kg",
+    "slug": "poireaux-carrefour-2000000000030",
+    "origin": "France",
+    "images": {
+     "main": "https://media.carrefour.fr/medias/simulation/2000000000030.jpg"
+    },
+    "offers": {
+     "2000000000030": {
+      "simulation-offre": {
+       "type": "offer",
+       "id": "simulation-2000000000030",
+       "attributes": {
+        "price": {
+         "price": 2.29,
+         "perUnitLabel": "2,29 € / KG",
+         "perUnit": 2.29,
+         "unitOfMeasure": "KG"
+        },
+        "availability": {
+         "purchasable": true
+        }
+       }
+      }
+     }
+    }
+   }
+  },
+  {
+   "type": "product",
+   "id": "2000000000040",
+   "attributes": {
+    "ean": "2000000000040",
+    "title": "Carottes",
+    "brand": "Carrefour",
+    "format": "le sachet de 1 kg",
+    "slug": "carottes-carrefour-2000000000040",
+    "origin": "France",
+    "images": {
+     "main": "https://media.carrefour.fr/medias/simulation/2000000000040.jpg"
+    },
+    "offers": {
+     "2000000000040": {
+      "simulation-offre": {
+       "type": "offer",
+       "id": "simulation-2000000000040",
+       "attributes": {
+        "price": {
+         "price": 1.49,
+         "perUnitLabel": "1,49 € / KG",
+         "perUnit": 1.49,
+         "unitOfMeasure": "KG"
+        },
+        "availability": {
+         "purchasable": true
+        }
+       }
+      }
+     }
+    }
+   }
+  },
+  {
+   "type": "product",
+   "id": "2000000000050",
+   "attributes": {
+    "ean": "2000000000050",
+    "title": "Chou-fleur",
+    "brand": "Carrefour",
+    "format": "la pièce",
+    "slug": "chou-fleur-carrefour-2000000000050",
+    "origin": "France",
+    "images": {
+     "main": "https://media.carrefour.fr/medias/simulation/2000000000050.jpg"
+    },
+    "offers": {
+     "2000000000050": {
+      "simulation-offre": {
+       "type": "offer",
+       "id": "simulation-2000000000050",
+       "attributes": {
+        "price": {
+         "price": 2.19,
+         "perUnitLabel": "2,19 € / PIECE",
+         "perUnit": 2.19,
+         "unitOfMeasure": "PIECE"
+        },
+        "availability": {
+         "purchasable": true
+        },
+        "promotion": {
+         "label": "-20 % sur le 2ème"
+        }
+       }
+      }
+     }
+    }
+   }
+  },
+  {
+   "type": "product",
+   "id": "2000000000060",
+   "attributes": {
+    "ean": "2000000000060",
+    "title": "Céleri rave",
+    "brand": "Carrefour",
+    "format": "la pièce de 800 g environ",
+    "slug": "celeri-rave-carrefour-2000000000060",
+    "origin": "France",
+    "images": {
+     "main": "https://media.carrefour.fr/medias/simulation/2000000000060.jpg"
+    },
+    "offers": {
+     "2000000000060": {
+      "simulation-offre": {
+       "type": "offer",
+       "id": "simulation-2000000000060",
+       "attributes": {
+        "price": {
+         "price": 1.99,
+         "perUnitLabel": "2,49 € / KG",
+         "perUnit": 2.49,
+         "unitOfMeasure": "KG"
+        },
+        "availability": {
+         "purchasable": true
+        }
+       }
+      }
+     }
+    }
+   }
+  },
+  {
+   "type": "product",
+   "id": "2000000000070",
+   "attributes": {
+    "ean": "2000000000070",
+    "title": "Panais",
+    "brand": "Carrefour",
+    "format": "la barquette de 500 g",
+    "slug": "panais-carrefour-2000000000070",
+    "origin": "France",
+    "images": {
+     "main": "https://media.carrefour.fr/medias/simulation/2000000000070.jpg"
+    },
+    "offers": {
+     "2000000000070": {
+      "simulation-offre": {
+       "type": "offer",
+       "id": "simulation-2000000000070",
+       "attributes": {
+        "price": {
+         "price": 1.89,
+         "perUnitLabel": "3,78 € / KG",
+         "perUnit": 3.78,
+         "unitOfMeasure": "KG"
+        },
+        "availability": {
+         "purchasable": true
+        }
+       }
+      }
+     }
+    }
+   }
+  },
+  {
+   "type": "product",
+   "id": "2000000000080",
+   "attributes": {
+    "ean": "2000000000080",
+    "title": "Champignons de Paris blancs",
+    "brand": "Carrefour",
+    "format": "la barquette de 500 g",
+    "slug": "champignons-de-paris-blancs-carrefour-2000000000080",
+    "origin": "France",
+    "images": {
+     "main": "https://media.carrefour.fr/medias/simulation/2000000000080.jpg"
+    },
+    "offers": {
+     "2000000000080": {
+      "simulation-offre": {
+       "type": "offer",
+       "id": "simulation-2000000000080",
+       "attributes": {
+        "price": {
+         "price": 2.25,
+         "perUnitLabel": "4,50 € / KG",
+         "perUnit": 4.5,
+         "unitOfMeasure": "KG"
+        },
+        "availability": {
+         "purchasable": true
+        },
+        "promotion": {
+         "label": "-25 %",
+         "priceBeforeDiscount": 2.99
+        }
+       }
+      }
+     }
+    }
+   }
+  },
+  {
+   "type": "product",
+   "id": "2000000000090",
+   "attributes": {
+    "ean": "2000000000090",
+    "title": "Betteraves rouges cuites",
+    "brand": "Carrefour",
+    "format": "le sachet de 500 g",
+    "slug": "betteraves-rouges-cuites-carrefour-2000000000090",
+    "origin": "France",
+    "images": {
+     "main": "https://media.carrefour.fr/medias/simulation/2000000000090.jpg"
+    },
+    "offers": {
+     "2000000000090": {
+      "simulation-offre": {
+       "type": "offer",
+       "id": "simulation-2000000000090",
+       "attributes": {
+        "price": {
+         "price": 1.15,
+         "perUnitLabel": "2,30 € / KG",
+         "perUnit": 2.3,
+         "unitOfMeasure": "KG"
+        },
+        "availability": {
+         "purchasable": true
+        }
+       }
+      }
+     }
+    }
+   }
+  },
+  {
+   "type": "product",
+   "id": "2000000000100",
+   "attributes": {
+    "ean": "2000000000100",
+    "title": "Patates douces",
+    "brand": "Carrefour",
+    "format": "le filet de 1 kg",
+    "slug": "patates-douces-carrefour-2000000000100",
+    "origin": "Espagne",
+    "images": {
+     "main": "https://media.carrefour.fr/medias/simulation/2000000000100.jpg"
+    },
+    "offers": {
+     "2000000000100": {
+      "simulation-offre": {
+       "type": "offer",
+       "id": "simulation-2000000000100",
+       "attributes": {
+        "price": {
+         "price": 2.99,
+         "perUnitLabel": "2,99 € / KG",
+         "perUnit": 2.99,
+         "unitOfMeasure": "KG"
+        },
+        "availability": {
+         "purchasable": true
+        }
+       }
+      }
+     }
+    }
+   }
+  },
+  {
+   "type": "product",
+   "id": "2000000000110",
+   "attributes": {
+    "ean": "2000000000110",
+    "title": "Chou de Bruxelles",
+    "brand": "Carrefour",
+    "format": "le sachet de 500 g",
+    "slug": "chou-de-bruxelles-carrefour-2000000000110",
+    "origin": "France",
+    "images": {
+     "main": "https://media.carrefour.fr/medias/simulation/2000000000110.jpg"
+    },
+    "offers": {
+     "2000000000110": {
+      "simulation-offre": {
+       "type": "offer",
+       "id": "simulation-2000000000110",
+       "attributes": {
+        "price": {
+         "price": 2.09,
+         "perUnitLabel": "4,18 € / KG",
+         "perUnit": 4.18,
+         "unitOfMeasure": "KG"
+        },
+        "availability": {
+         "purchasable": true
+        }
+       }
+      }
+     }
+    }
+   }
+  },
+  {
+   "type": "product",
+   "id": "2000000000120",
+   "attributes": {
+    "ean": "2000000000120",
+    "title": "Navets",
+    "brand": "Carrefour",
+    "format": "la botte de 750 g",
+    "slug": "navets-carrefour-2000000000120",
+    "origin": "France",
+    "images": {
+     "main": "https://media.carrefour.fr/medias/simulation/2000000000120.jpg"
+    },
+    "offers": {
+     "2000000000120": {
+      "simulation-offre": {
+       "type": "offer",
+       "id": "simulation-2000000000120",
+       "attributes": {
+        "price": {
+         "price": 1.79,
+         "perUnitLabel": "2,39 € / KG",
+         "perUnit": 2.39,
+         "unitOfMeasure": "KG"
+        },
+        "availability": {
+         "purchasable": true
+        }
+       }
+      }
+     }
+    }
+   }
+  }
+ ],
+ "meta": {
+  "total": 12,
+  "itemsPerPage": 30,
+  "currentPage": 1
+ }
+}

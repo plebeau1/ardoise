@@ -1,0 +1,3 @@
+firebase_functions~=0.6
+google-cloud-storage>=2.16
+curl_cffi==0.7.4   # Carrefour : empreinte Safari pour passer Cloudflare (version testée depuis le cloud)

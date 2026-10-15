@@ -1,0 +1,13 @@
+# Données : la source de vérité est le bucket gs://ardoise-mon-marche-data (data/ n'en est qu'une copie locale)
+data/
+exports/
+
+# Python / Firebase
+functions/venv/
+__pycache__/
+*.pyc
+.firebase/
+firebase-debug*.log
+.env*
+
+.DS_Store

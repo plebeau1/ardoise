@@ -1,0 +1,1444 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Ardoise · Mon Marché × Carrefour</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wdth,wght@12..96,75..100,300..800&display=swap" rel="stylesheet">
+<style>
+/* ── Direction artistique « ardoise de marché » : fond vert-noir, craie, citron, mandarine ── */
+:root {
+  color-scheme: dark;
+  --bg: #0B1510;
+  --surface: #13201A;
+  --surface-2: #1A2B22;
+  --line: #263A2F;
+  --grid: #1E3027;
+  --text: #F1F6EF;
+  --text-2: #AFC2B5;
+  --muted: #7C9386;
+  --chalk: #D5E6DA;      /* marques de données par défaut */
+  --ghost: #35503F;      /* lignes de contexte (désaccentuées) */
+  --citron: #E2F552;     /* accent / emphase */
+  --promo: #FF8F3F;      /* promotions */
+  --up: #FF4F7B;         /* hausse de prix */
+  --down: #3FD49A;       /* baisse de prix */
+  --mm: #D5E6DA;         /* enseigne Mon Marché (craie) — couleurs d'enseigne toujours accompagnées du nom */
+  --cf: #4A90E8;         /* enseigne Carrefour (bleu) */
+  --ink-on-light: #0B1510;
+  --radius: 20px;
+  --font: "Bricolage Grotesque", ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+}
+* { box-sizing: border-box; margin: 0; padding: 0; }
+html { background: var(--bg); }
+body {
+  font-family: var(--font);
+  font-size: 15px;
+  line-height: 1.45;
+  color: var(--text);
+  background:
+    radial-gradient(1100px 520px at 8% -8%, rgba(226, 245, 82, .08), transparent 60%),
+    radial-gradient(900px 600px at 100% 20%, rgba(255, 143, 63, .05), transparent 60%),
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='180' height='180'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.85' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 1 0 0 0 0 1 0 0 0 0 1 0 0 0 .045 0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E"),
+    var(--bg);
+  -webkit-font-smoothing: antialiased;
+  min-height: 100vh;
+  overflow-x: clip;
+}
+button, input, select { font: inherit; color: inherit; }
+a { color: inherit; }
+.wrap { max-width: 1320px; margin: 0 auto; padding: 0 28px; }
+.num { font-variant-numeric: tabular-nums; }
+
+/* En-tête */
+.top { display: flex; align-items: center; justify-content: space-between; gap: 16px; padding: 22px 0 0; flex-wrap: wrap; }
+.brand { display: flex; align-items: center; gap: 10px; font-weight: 700; font-size: 17px; letter-spacing: -.01em; }
+.brand svg { width: 30px; height: 30px; }
+.brand .by { color: var(--muted); font-weight: 500; }
+.meta { color: var(--text-2); font-size: 13.5px; display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
+.meta .dot { width: 7px; height: 7px; border-radius: 50%; background: var(--down); box-shadow: 0 0 0 4px rgba(63, 212, 154, .15); }
+.intro { padding: 48px 0 30px; display: grid; grid-template-columns: 1.4fr 1fr; gap: 32px; align-items: end; }
+h1 {
+  font-size: clamp(44px, 7.4vw, 104px);
+  line-height: .9;
+  font-weight: 800;
+  font-stretch: 78%;
+  letter-spacing: -.015em;
+}
+h1 .hl { color: var(--citron); display: block; }
+.lede { color: var(--text-2); font-size: 16.5px; max-width: 46ch; }
+.lede strong { color: var(--text); font-weight: 650; }
+
+/* Filtres (une seule rangée, au-dessus de tout ce qu'elle filtre) */
+.filters { position: sticky; top: 0; z-index: 20; background: rgba(11, 21, 16, .86); backdrop-filter: blur(14px); -webkit-backdrop-filter: blur(14px); border-bottom: 1px solid var(--line); }
+.filters .wrap { display: flex; gap: 12px; align-items: center; padding-top: 12px; padding-bottom: 12px; flex-wrap: wrap; }
+.chips { display: flex; gap: 6px; overflow-x: auto; scrollbar-width: none; flex: 1 1 520px; min-width: 0; padding: 2px; }
+.chips::-webkit-scrollbar { display: none; }
+.chips { -webkit-mask-image: linear-gradient(to right, #000 calc(100% - 36px), transparent); mask-image: linear-gradient(to right, #000 calc(100% - 36px), transparent); padding-right: 30px; }
+.chip {
+  flex: none; border: 1px solid var(--line); background: transparent; color: var(--text-2);
+  padding: 7px 13px; border-radius: 999px; font-weight: 600; font-size: 13.5px; cursor: pointer; white-space: nowrap;
+  transition: background .15s, color .15s, border-color .15s;
+}
+.chip:hover { border-color: #3E5A4A; color: var(--text); }
+.chip .n { color: var(--muted); font-weight: 500; margin-left: 4px; }
+.chip.on { background: var(--citron); border-color: var(--citron); color: var(--ink-on-light); }
+.chip.on .n { color: rgba(11, 21, 16, .6); }
+.chip:focus-visible, .seg button:focus-visible, .toggle:focus-visible, .pcard:focus-visible, .row-btn:focus-visible { outline: 2px solid var(--citron); outline-offset: 2px; }
+.tools { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; min-width: 0; max-width: 100%; }
+.search { position: relative; }
+.search input {
+  width: 250px; background: var(--surface); border: 1px solid var(--line); border-radius: 999px;
+  padding: 8px 14px 8px 34px; font-size: 13.5px; outline: none;
+}
+.search input:focus { border-color: var(--citron); }
+.search svg { position: absolute; left: 12px; top: 50%; transform: translateY(-50%); width: 15px; height: 15px; color: var(--muted); }
+.seg { display: inline-flex; background: var(--surface); border: 1px solid var(--line); border-radius: 999px; padding: 3px; align-items: center; }
+.seg { max-width: 100%; overflow-x: auto; scrollbar-width: none; }
+.seg::-webkit-scrollbar { display: none; }
+.seg .lbl { flex: none; color: var(--muted); font-size: 12.5px; padding: 0 8px 0 10px; }
+.seg button { flex: none; border: 0; background: transparent; color: var(--text-2); padding: 5px 11px; border-radius: 999px; font-size: 13px; font-weight: 600; cursor: pointer; }
+.seg button.on { background: var(--surface-2); color: var(--text); box-shadow: inset 0 0 0 1px #3E5A4A; }
+.toggle { display: inline-flex; gap: 8px; align-items: center; border: 1px solid var(--line); background: var(--surface); padding: 7px 13px 7px 9px; border-radius: 999px; font-size: 13.5px; font-weight: 600; color: var(--text-2); cursor: pointer; }
+.toggle .sw { width: 28px; height: 16px; border-radius: 999px; background: var(--line); position: relative; transition: background .15s; }
+.toggle .sw::after { content: ""; position: absolute; top: 2px; left: 2px; width: 12px; height: 12px; border-radius: 50%; background: var(--text-2); transition: transform .15s, background .15s; }
+.toggle.on { color: var(--text); border-color: var(--promo); }
+.toggle.on .sw { background: var(--promo); }
+.toggle.on .sw::after { transform: translateX(12px); background: var(--ink-on-light); }
+
+main { padding: 28px 0 40px; display: grid; gap: 22px; }
+.panel { background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius); padding: 22px 22px 20px; min-width: 0; }
+.ph { display: flex; justify-content: space-between; align-items: flex-start; gap: 12px; margin-bottom: 16px; flex-wrap: wrap; }
+.ph h2 { font-size: 21px; font-weight: 750; letter-spacing: -.01em; font-stretch: 90%; }
+.ph p { color: var(--muted); font-size: 13px; margin-top: 3px; max-width: 62ch; }
+.legend { display: flex; gap: 14px; flex-wrap: wrap; color: var(--text-2); font-size: 12.5px; align-items: center; }
+.legend span { display: inline-flex; align-items: center; gap: 6px; }
+.key-line { width: 16px; height: 2px; border-radius: 2px; display: inline-block; }
+.key-box { width: 11px; height: 11px; border-radius: 3px; display: inline-block; }
+.grid-2 { display: grid; grid-template-columns: 1.55fr 1fr; gap: 22px; }
+.grid-2b { display: grid; grid-template-columns: 1.2fr 1fr; gap: 22px; }
+.stack { display: grid; gap: 22px; align-content: start; }
+
+/* KPIs */
+.kpis { display: grid; grid-template-columns: 1.15fr 1fr; gap: 14px; }
+.kpi-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+.tile { background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius); padding: 18px 18px 16px; display: flex; flex-direction: column; gap: 6px; min-width: 0; }
+.tile .lab { color: var(--text-2); font-size: 13px; font-weight: 500; }
+.tile .val { font-size: 32px; font-weight: 700; letter-spacing: -.02em; line-height: 1.05; display: flex; align-items: baseline; gap: 8px; }
+.tile .sub { color: var(--muted); font-size: 12.5px; }
+.tile .ico { font-size: 18px; }
+.tile.hero .ico { font-size: 30px; align-self: center; }
+.tile.hero { background: linear-gradient(160deg, #1B2E23 0%, var(--surface) 70%); border-color: #2E4738; position: relative; overflow: hidden; }
+.tile.hero .val { font-size: 64px; letter-spacing: -.035em; }
+.tile.hero .val.small { font-size: 34px; letter-spacing: -.02em; }
+.tile.hero .spark { margin-top: auto; height: 54px; }
+.up-ico { color: var(--up); }
+.down-ico { color: var(--down); }
+.promo-ico { color: var(--promo); }
+
+/* Cartes produit (vue « étal ») */
+.pgrid { display: grid; grid-template-columns: repeat(auto-fill, minmax(214px, 1fr)); gap: 14px; }
+.pcard {
+  background: var(--surface); border: 1px solid var(--line); border-radius: 18px; overflow: hidden; cursor: pointer;
+  display: flex; flex-direction: column; text-align: left; transition: transform .16s ease, border-color .16s, box-shadow .16s;
+}
+.pcard:hover { transform: translateY(-3px); border-color: #3E5A4A; box-shadow: 0 14px 30px -18px rgba(0, 0, 0, .8); }
+.pimg { position: relative; aspect-ratio: 4 / 3; background: #E9EFE6; overflow: hidden; }
+.pimg img { width: 100%; height: 100%; object-fit: cover; display: block; transition: transform .4s ease; }
+.pcard:hover .pimg img { transform: scale(1.04); }
+.rank { position: absolute; top: 10px; left: 10px; background: rgba(11, 21, 16, .84); color: var(--text); font-weight: 700; font-size: 12px; padding: 4px 9px; border-radius: 999px; backdrop-filter: blur(6px); }
+.tag {
+  background: var(--promo); color: #1C0D02; font-weight: 800; font-size: 13px; padding: 4px 9px 3px; border-radius: 7px;
+  display: inline-block; letter-spacing: -.01em; white-space: nowrap;
+}
+.pimg .tag { position: absolute; top: 10px; right: 10px; transform: rotate(-4deg); box-shadow: 0 6px 14px -6px rgba(0, 0, 0, .6); }
+.pbody { padding: 13px 14px 14px; display: flex; flex-direction: column; gap: 4px; flex: 1; }
+.porig { color: var(--text-2); font-size: 12.5px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.pname { font-size: 16px; font-weight: 650; line-height: 1.2; letter-spacing: -.005em; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; min-height: 2.4em; }
+.punit { color: var(--muted); font-size: 12.5px; }
+.pprice { display: flex; align-items: baseline; gap: 7px; margin-top: 6px; flex-wrap: wrap; }
+.pprice .p { font-size: 24px; font-weight: 750; letter-spacing: -.02em; }
+.pprice .old { color: var(--muted); font-size: 13px; text-decoration: line-through; }
+.pprice .kg { margin-left: auto; color: var(--text-2); font-size: 13px; }
+.pfoot { display: flex; justify-content: space-between; align-items: center; margin-top: 8px; padding-top: 9px; border-top: 1px solid var(--grid); min-height: 36px; }
+.delta { display: inline-flex; align-items: center; gap: 5px; font-size: 12.5px; font-weight: 650; padding: 3px 9px 3px 7px; border-radius: 999px; background: var(--surface-2); color: var(--text); white-space: nowrap; }
+.delta.up { background: rgba(255, 79, 123, .13); }
+.delta.down { background: rgba(63, 212, 154, .13); }
+.delta.up i { color: var(--up); font-style: normal; }
+.delta.down i { color: var(--down); font-style: normal; }
+.delta.flat i, .delta.new i { color: var(--muted); font-style: normal; }
+.delta.flat, .delta.new { color: var(--text-2); font-weight: 550; }
+.gone { margin-top: 14px; color: var(--muted); font-size: 13px; }
+.gone button { background: none; border: 0; color: var(--text-2); text-decoration: underline; text-underline-offset: 3px; cursor: pointer; }
+
+/* Tableau */
+.tablewrap { overflow-x: auto; }
+table { width: 100%; border-collapse: collapse; font-size: 13.5px; }
+th { text-align: left; color: var(--text-2); font-weight: 600; font-size: 12.5px; padding: 10px 10px; border-bottom: 1px solid var(--line); white-space: nowrap; cursor: pointer; user-select: none; }
+th.r, td.r { text-align: right; }
+th.sorted { color: var(--citron); }
+td { padding: 9px 10px; border-bottom: 1px solid var(--grid); vertical-align: middle; }
+td { white-space: nowrap; }
+td:nth-child(2) { white-space: normal; }
+tbody tr { cursor: pointer; }
+tbody tr:hover td { background: var(--surface-2); }
+td .cellp { display: flex; align-items: center; gap: 10px; min-width: 230px; }
+td .cellp img { width: 38px; height: 38px; border-radius: 9px; object-fit: cover; background: #E9EFE6; flex: none; }
+td .cellp b { font-weight: 600; }
+td .cellp small { display: block; color: var(--muted); font-size: 12px; }
+
+/* Barres */
+.bars { display: grid; gap: 4px; }
+.brow { display: grid; grid-template-columns: minmax(110px, 200px) 1fr; gap: 12px; align-items: center; border-radius: 8px; padding: 3px 4px; cursor: pointer; background: transparent; border: 0; text-align: left; width: 100%; }
+.brow:hover { background: var(--surface-2); }
+.brow .bl { font-size: 13px; color: var(--text-2); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.brow .bl .fl { margin-right: 6px; }
+.btrack { position: relative; height: 22px; border-left: 1px solid var(--line); }
+.bar { position: absolute; left: 0; top: 4px; height: 14px; border-radius: 0 4px 4px 0; background: var(--chalk); }
+.bar.ghost { background: rgba(255, 143, 63, .24); }
+.bar.promo { background: var(--promo); }
+.bar.hi { background: var(--citron); }
+.bval { position: absolute; top: 2px; font-size: 12.5px; color: var(--text); white-space: nowrap; }
+.bval small { color: var(--muted); }
+.more { margin-top: 12px; background: transparent; border: 1px solid var(--line); color: var(--text-2); padding: 7px 14px; border-radius: 999px; cursor: pointer; font-size: 13px; font-weight: 600; }
+.more:hover { color: var(--text); border-color: #3E5A4A; }
+
+/* Listes */
+.list { display: grid; gap: 2px; }
+.row-btn { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 12px; align-items: center; padding: 8px 8px; border-radius: 12px; background: transparent; border: 0; text-align: left; cursor: pointer; width: 100%; }
+.row-btn:hover { background: var(--surface-2); }
+.row-btn .t { font-weight: 600; font-size: 14px; line-height: 1.2; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.row-btn .s { color: var(--muted); font-size: 12.5px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.row-btn .r { text-align: right; white-space: nowrap; }
+.row-btn .r .big { font-weight: 700; font-size: 15px; }
+.row-btn .r .old { color: var(--muted); font-size: 12px; text-decoration: line-through; display: block; }
+.row-btn .r .s { display: block; }
+.movers { display: grid; gap: 14px; }
+.movers h3 { font-size: 13px; font-weight: 600; color: var(--text-2); margin: 0 0 6px 8px; display: flex; align-items: center; gap: 6px; }
+
+/* Graphiques */
+.chart { position: relative; width: 100%; }
+.chart svg { display: block; width: 100%; overflow: visible; }
+.chart text { font-family: var(--font); }
+.empty {
+  border: 1px dashed #2F4739; border-radius: 16px; padding: 34px 24px; text-align: center; color: var(--text-2);
+  display: grid; gap: 8px; place-items: center; min-height: 220px; align-content: center;
+}
+.empty .big { font-size: 46px; font-weight: 800; font-stretch: 78%; color: var(--citron); letter-spacing: -.02em; line-height: 1; }
+.empty p { max-width: 40ch; font-size: 14px; }
+
+/* Infobulle */
+.tip {
+  position: fixed; z-index: 100; pointer-events: none; background: rgba(8, 15, 11, .96); border: 1px solid #34503F;
+  border-radius: 12px; padding: 10px 12px; font-size: 13px; min-width: 150px; max-width: 300px; opacity: 0; transition: opacity .1s;
+  box-shadow: 0 18px 40px -16px rgba(0, 0, 0, .9);
+}
+.tip.show { opacity: 1; }
+.tip .tt { color: var(--muted); font-size: 12px; margin-bottom: 6px; }
+.tip .tr { display: flex; align-items: center; gap: 8px; margin-top: 3px; }
+.tip .tr b { font-weight: 700; font-variant-numeric: tabular-nums; }
+.tip .tr span { color: var(--text-2); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+/* Fiche produit */
+.scrim { position: fixed; inset: 0; background: rgba(3, 8, 5, .6); backdrop-filter: blur(3px); z-index: 60; opacity: 0; pointer-events: none; transition: opacity .2s; }
+.scrim.open { opacity: 1; pointer-events: auto; }
+.drawer {
+  position: fixed; top: 0; right: 0; bottom: 0; width: min(560px, 100vw); z-index: 70; background: #101B15; border-left: 1px solid var(--line);
+  transform: translateX(100%); transition: transform .28s cubic-bezier(.2, .8, .2, 1); overflow-y: auto; overscroll-behavior: contain;
+}
+.drawer.open { transform: none; }
+.dtop { display: flex; justify-content: space-between; align-items: flex-start; gap: 14px; padding: 20px 20px 0 26px; }
+.dtop img, .dtop .ph-img { width: 76px; height: 76px; border-radius: 14px; object-fit: cover; background: #E9EFE6; display: block; }
+.close { flex: none; margin-left: auto; width: 38px; height: 38px; border-radius: 50%; border: 0; background: rgba(11, 21, 16, .85); color: var(--text); font-size: 20px; cursor: pointer; display: grid; place-items: center; }
+.close:focus-visible { outline: 2px solid var(--citron); }
+.dbody { padding: 18px 26px 40px; display: grid; gap: 22px; }
+.dkick { color: var(--muted); font-size: 13px; }
+.dbody h2 { font-size: 34px; line-height: 1; font-weight: 800; font-stretch: 82%; letter-spacing: -.02em; margin-top: 6px; }
+.dshort { color: var(--text-2); margin-top: 10px; font-size: 15px; }
+.pills { display: flex; gap: 6px; flex-wrap: wrap; }
+.pill { border: 1px solid var(--line); border-radius: 999px; padding: 4px 10px; font-size: 12.5px; color: var(--text-2); background: var(--surface); }
+.pill b { color: var(--text); font-weight: 600; }
+.pill.label { border-color: rgba(63, 212, 154, .4); }
+.dprice { display: flex; align-items: baseline; gap: 12px; flex-wrap: wrap; }
+.dprice .p { font-size: 48px; font-weight: 750; letter-spacing: -.03em; line-height: 1; }
+.dprice .kg { color: var(--text-2); font-size: 16px; }
+.dprice .old { color: var(--muted); text-decoration: line-through; }
+.dprice .until { color: var(--promo); font-size: 13px; font-weight: 600; width: 100%; }
+.stats { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; }
+.stat { background: var(--surface); border: 1px solid var(--line); border-radius: 14px; padding: 11px 12px; }
+.stat .lab { color: var(--muted); font-size: 11.5px; }
+.stat .v { font-weight: 700; font-size: 17px; margin-top: 2px; }
+.dsec h3 { font-size: 15px; font-weight: 700; margin-bottom: 10px; display: flex; justify-content: space-between; align-items: center; gap: 10px; flex-wrap: wrap; }
+.ddesc { color: var(--text-2); white-space: pre-line; font-size: 14px; }
+dl.attrs { display: grid; grid-template-columns: minmax(120px, 42%) 1fr; font-size: 13.5px; }
+dl.attrs dt { color: var(--muted); padding: 7px 0; border-bottom: 1px solid var(--grid); }
+dl.attrs dd { padding: 7px 0 7px 10px; border-bottom: 1px solid var(--grid); }
+.cta { display: inline-flex; gap: 8px; align-items: center; background: var(--citron); color: var(--ink-on-light); text-decoration: none; font-weight: 700; padding: 11px 18px; border-radius: 999px; justify-self: start; }
+.cta:hover { filter: brightness(1.06); }
+
+/* Enseignes */
+.sdot { width: 9px; height: 9px; border-radius: 3px; display: inline-block; flex: none; vertical-align: 1px; }
+.sdot.mm { background: var(--mm); }
+.sdot.cf { background: var(--cf); }
+.seg button .sdot, .chip .sdot { margin-right: 6px; }
+
+/* Liste compacte : la vue par défaut, sans images */
+.ltable td { padding: 7px 10px; }
+.ltable td.pn { white-space: normal; min-width: 240px; }
+.ltable .pn b { font-weight: 600; display: block; line-height: 1.25; }
+.ltable small { color: var(--muted); font-size: 12px; }
+.ltable .pn small { display: flex; align-items: center; gap: 6px; margin-top: 2px; }
+.ltable .tag { font-size: 11.5px; padding: 2px 6px 1px; }
+.ltable small.old { display: block; text-decoration: line-through; font-size: 11.5px; }
+.ltable small.pu-m { display: none; }
+
+/* Comparateur */
+.cmp-head { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 14px; margin-bottom: 18px; }
+.cmp-head .tile { background: var(--surface-2); }
+.cmp-head .tile .val { font-size: 28px; }
+.cmp-table td { padding: 8px 10px; }
+.cmp-table td.fam { white-space: normal; min-width: 150px; }
+.cmp-table .fam b { font-weight: 650; }
+.cmp-table .fam small, .cmp-table .pv small { display: block; color: var(--muted); font-size: 11.5px; }
+.cmp-table .pv small { max-width: 210px; overflow: hidden; text-overflow: ellipsis; }
+.cmp-table .pv.cheap b { color: var(--text); font-weight: 750; }
+.cmp-table .pv b { font-weight: 550; color: var(--text-2); }
+.cmp-table th .sdot { margin-right: 6px; }
+.gapcell { display: flex; align-items: center; gap: 10px; }
+.gap { position: relative; height: 18px; flex: 1 1 180px; min-width: 140px; }
+.gap::before { content: ""; position: absolute; left: 50%; top: -4px; bottom: -4px; border-left: 1px solid #3E5A4A; }
+.gap .gbar { position: absolute; top: 3px; height: 12px; }
+.gap .gbar.mm { right: 50%; background: var(--mm); border-radius: 4px 0 0 4px; }
+.gap .gbar.cf { left: 50%; background: var(--cf); border-radius: 0 4px 4px 0; }
+.gaptxt { font-size: 12.5px; white-space: nowrap; min-width: 118px; color: var(--text-2); }
+.gaptxt b { color: var(--text); font-weight: 650; }
+.cmp-table .pv small.pct-m { display: none; }
+.cmp-note { margin-top: 12px; color: var(--muted); font-size: 12.5px; }
+.vs { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 4px 12px; align-items: center; background: var(--surface); border: 1px solid var(--line); border-radius: 14px; padding: 12px 14px; }
+.vs .s { color: var(--muted); font-size: 12.5px; }
+.vs button { grid-row: span 2; }
+
+footer { border-top: 1px solid var(--line); padding: 22px 0 40px; color: var(--muted); font-size: 13px; }
+footer code { color: var(--text-2); background: var(--surface); padding: 2px 6px; border-radius: 6px; font-size: 12.5px; }
+
+@media (max-width: 1100px) {
+  .kpis { grid-template-columns: 1fr; }
+  .grid-2, .grid-2b { grid-template-columns: 1fr; }
+}
+@media (max-width: 760px) {
+  .wrap { padding: 0 16px; }
+  .filters { position: static; }
+  .intro { grid-template-columns: 1fr; padding: 32px 0 22px; gap: 16px; }
+  .tools { width: 100%; }
+  .search, .search input { width: 100%; }
+  .search { flex: 1 1 100%; }
+  .pgrid { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
+  .pprice .kg { margin-left: 0; width: 100%; }
+  .pprice .p { font-size: 20px; }
+  .brow { grid-template-columns: 96px 1fr; gap: 8px; }
+  .tile.hero .val { font-size: 48px; }
+  .stats { grid-template-columns: repeat(2, 1fr); }
+  .dbody { padding: 16px 18px 40px; }
+  .dtop { padding: 16px 16px 0 18px; }
+  .cmp-head { grid-template-columns: 1fr 1fr; gap: 10px; }
+  .cmp-head .tile:first-child { grid-column: span 2; }
+  .cmp-table .pv small, .cmp-table th:nth-child(n+4), .cmp-table td:nth-child(n+4) { display: none; }
+  .cmp-table .pv small.pct-m { display: block; color: var(--text-2); }
+  .cmp-table td, .cmp-table th { padding: 8px 6px; }
+  .cmp-table td.fam { min-width: 0; }
+  .ltable :is(th, td):is(:nth-child(1), :nth-child(3), :nth-child(5), :nth-child(6), :nth-child(8)) { display: none; }
+  .ltable td.pn { min-width: 0; }
+  .ltable small.pu-m { display: block; }
+}
+@media (prefers-reduced-motion: reduce) { * { transition: none !important; } }
+</style>
+</head>
+<body>
+
+<div class="wrap">
+  <header class="top">
+    <div class="brand">
+      <svg viewBox="0 0 32 32" aria-hidden="true">
+        <rect x="2" y="6" width="22" height="22" rx="5" fill="#E2F552" transform="rotate(-8 13 17)"/>
+        <circle cx="9" cy="12" r="2" fill="#0B1510" transform="rotate(-8 13 17)"/>
+        <path d="M23 4c3 0 6 2 6 6-3 0-6-2-6-6z" fill="#3FD49A"/>
+        <text x="13.5" y="23" font-size="11" font-weight="800" text-anchor="middle" fill="#0B1510" font-family="Bricolage Grotesque, sans-serif" transform="rotate(-8 13 17)">€</text>
+      </svg>
+      Ardoise <span class="by">· veille prix Mon Marché × Carrefour</span>
+    </div>
+    <div class="meta" id="meta"></div>
+  </header>
+  <section class="intro">
+    <h1>Les prix du marché,<span class="hl">jour après jour.</span></h1>
+    <p class="lede" id="lede"></p>
+  </section>
+</div>
+
+<nav class="filters" aria-label="Filtres">
+  <div class="wrap">
+    <div class="seg" id="srcSeg" role="group" aria-label="Enseigne"></div>
+    <div class="chips" id="chips" role="tablist" aria-label="Rayons"></div>
+    <div class="tools">
+      <label class="search">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>
+        <input id="q" type="search" placeholder="Produit, variété, pays…" aria-label="Rechercher un produit">
+      </label>
+      <div class="seg" id="compare" role="group" aria-label="Comparer à"><span class="lbl">vs</span></div>
+      <button class="toggle" id="promoToggle" type="button" aria-pressed="false"><span class="sw"></span>Promos</button>
+    </div>
+  </div>
+</nav>
+
+<div class="wrap">
+  <main>
+    <section class="kpis" id="kpis" aria-label="Chiffres clés"></section>
+
+    <section class="panel" id="cmpPanel">
+      <div class="ph">
+        <div>
+          <h2>Mon Marché × Carrefour</h2>
+          <p>Même produit chez les deux enseignes : le prix le plus bas de chacune (prix d'entrée, toutes marques), hors promo, au kilo ou au litre, à défaut à la pièce ou par unité (sac, rouleau…). Bio et conventionnel comparés séparément. Cliquez pour l'historique.</p>
+        </div>
+      </div>
+      <div id="cmp"></div>
+    </section>
+
+    <section class="grid-2">
+      <div class="panel">
+        <div class="ph">
+          <div>
+            <h2>Évolution des prix</h2>
+            <p>Indice du prix au kilo hors promo, base 100 au premier relevé de chaque produit. Survolez pour isoler un produit, cliquez pour l'ouvrir.</p>
+          </div>
+          <div class="legend" id="idxLegend"></div>
+        </div>
+        <div class="chart" id="idxChart"></div>
+      </div>
+      <div class="panel">
+        <div class="ph">
+          <div>
+            <h2>Ce qui bouge</h2>
+            <p id="moversSub"></p>
+          </div>
+        </div>
+        <div id="movers"></div>
+      </div>
+    </section>
+
+    <section class="panel">
+      <div class="ph">
+        <div>
+          <h2 id="prodTitle">Les produits</h2>
+          <p id="prodSub"></p>
+        </div>
+        <div class="tools">
+          <div class="seg" id="sort" role="group" aria-label="Trier par"><span class="lbl">Tri</span></div>
+          <div class="seg" id="view" role="group" aria-label="Affichage"></div>
+        </div>
+      </div>
+      <div id="products"></div>
+    </section>
+
+    <section class="grid-2b">
+      <div class="panel">
+        <div class="ph">
+          <div>
+            <h2>Prix au kilo</h2>
+            <p>Du plus cher au moins cher, prix affiché aujourd'hui.</p>
+          </div>
+          <div class="legend">
+            <span><i class="key-box" style="background:var(--chalk)"></i>Prix normal</span>
+            <span><i class="key-box" style="background:var(--promo)"></i>Prix promo</span>
+            <span><i class="key-box" style="background:rgba(255,143,63,.3)"></i>Remise</span>
+          </div>
+        </div>
+        <div id="kgBars"></div>
+      </div>
+      <div class="stack">
+        <div class="panel">
+          <div class="ph"><div><h2>Promos en cours</h2><p id="promoSub"></p></div></div>
+          <div id="promos"></div>
+        </div>
+        <div class="panel">
+          <div class="ph"><div><h2>D'où ça vient</h2><p>Nombre de produits par pays d'origine.</p></div></div>
+          <div id="origins"></div>
+        </div>
+      </div>
+    </section>
+  </main>
+</div>
+
+<footer>
+  <div class="wrap" id="foot"></div>
+</footer>
+
+<div class="scrim" id="scrim"></div>
+<aside class="drawer" id="drawer" role="dialog" aria-modal="true" aria-label="Fiche produit"></aside>
+<div class="tip" id="tip" role="status"></div>
+
+<script id="data" type="application/json">__DATA__</script>
+<script>
+"use strict";
+/* ───────────────────────── Données ───────────────────────── */
+const DATA = JSON.parse(document.getElementById("data").textContent);
+const DATES = DATA.dates;
+const LAST = DATES.length - 1;
+const AISLES = DATA.aisles;
+const AISLE_NAME = Object.fromEntries(AISLES.map(a => [a.slug, a.name]));
+const SOURCES = DATA.sources;
+const SRC_NAME = Object.fromEntries(SOURCES.map(s => [s.id, s.name]));
+const SRC_SITE = { mm: "mon-marche.fr", cf: "carrefour.fr" };
+// Jours de relevé de chaque enseigne : un produit est « actuel » s'il figure au dernier relevé de SON enseigne
+const SRC_DATES = Object.fromEntries(SOURCES.map(s => [s.id,
+  [...new Set(DATA.products.filter(p => p.src === s.id).flatMap(p => p.h.map(r => r[0])))].sort((a, b) => a - b)]));
+
+const PRODUCTS = DATA.products.map(p => {
+  const hist = p.h.map(r => ({ i: r[0], price: r[1], up: r[2], reg: r[3], rup: r[4], promo: r[5], rank: r[6], stock: r[7], promoEnd: r[8] }));
+  const last = hist[hist.length - 1];
+  return { ...p, hist, cur: last && last.i === SRC_DATES[p.src].at(-1) ? last : null };
+});
+const BY_ID = Object.fromEntries(PRODUCTS.map(p => [p.id, p]));
+const firstDay = p => SRC_DATES[p.src].length < 2;   // 1er relevé de l'enseigne : rien à comparer
+const metric = s => (s ? (s.rup ?? s.reg) : null);   // on compare le prix au kg/l hors promo, sinon le prix hors promo
+
+/* ───────────────────────── Format ───────────────────────── */
+const nf2 = new Intl.NumberFormat("fr-FR", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+const nf1 = new Intl.NumberFormat("fr-FR", { minimumFractionDigits: 1, maximumFractionDigits: 1 });
+const nf0 = new Intl.NumberFormat("fr-FR");
+const NB = " ";
+const eur = v => (v == null ? "—" : nf2.format(v) + NB + "€");
+const perU = (v, u) => (v == null ? "" : nf2.format(v) + NB + "€/" + (u || "kg"));
+const pct = v => (v > 0 ? "+" : v < 0 ? "−" : "±") + nf1.format(Math.abs(v * 100)) + NB + "%";
+const toDate = s => new Date(s + "T12:00:00Z");
+const fDay = new Intl.DateTimeFormat("fr-FR", { weekday: "short", day: "numeric", month: "short", timeZone: "UTC" });
+const fShort = new Intl.DateTimeFormat("fr-FR", { day: "numeric", month: "short", timeZone: "UTC" });
+const fLong = new Intl.DateTimeFormat("fr-FR", { weekday: "long", day: "numeric", month: "long", year: "numeric", timeZone: "UTC" });
+const day = s => fDay.format(toDate(s));
+const shortDay = s => fShort.format(toDate(s));
+const norm = t => (t || "").normalize("NFD").replace(/[̀-ͯ]/g, "").toLowerCase();
+const plural = (n, one, many) => nf0.format(n) + " " + (n > 1 ? many : one);
+
+const ISO = { "France": "FR", "Italie": "IT", "Espagne": "ES", "Grèce": "GR", "Portugal": "PT", "Irlande": "IE", "Afrique du Sud": "ZA",
+  "Pologne": "PL", "Pays-Bas": "NL", "Égypte": "EG", "Egypte": "EG", "Viêt Nam": "VN", "Vietnam": "VN", "Royaume-Uni": "GB", "Écosse": "GB",
+  "Pérou": "PE", "Nouvelle-Zélande": "NZ", "Martinique": "MQ", "Guadeloupe": "GP", "Réunion": "RE", "La Réunion": "RE", "Honduras": "HN",
+  "Danemark": "DK", "Maroc": "MA", "Belgique": "BE", "Allemagne": "DE", "Chili": "CL", "Brésil": "BR", "Colombie": "CO", "Costa Rica": "CR",
+  "Équateur": "EC", "Israël": "IL", "Côte d'Ivoire": "CI", "Côte d’Ivoire": "CI", "Sénégal": "SN", "Kenya": "KE", "Mexique": "MX",
+  "États-Unis": "US", "Inde": "IN", "Chine": "CN", "Turquie": "TR", "Tunisie": "TN", "Argentine": "AR", "Uruguay": "UY", "Canada": "CA",
+  "Suisse": "CH", "Norvège": "NO", "Islande": "IS", "Madagascar": "MG", "Thaïlande": "TH", "Australie": "AU", "Autriche": "AT",
+  "Guatemala": "GT", "Panama": "PA", "Cameroun": "CM", "Ghana": "GH", "Sri Lanka": "LK", "Japon": "JP", "Hongrie": "HU", "Roumanie": "RO",
+  "Bulgarie": "BG", "Suède": "SE", "Finlande": "FI", "Croatie": "HR", "Tchéquie": "CZ", "Lituanie": "LT", "Écosse (Royaume-Uni)": "GB" };
+const flag = c => {
+  const code = ISO[c];
+  return code ? String.fromCodePoint(...[...code].map(ch => 0x1F1E6 + ch.charCodeAt(0) - 65)) : "🌍";
+};
+const originText = p => (p.country ? flag(p.country) + " " + (p.made ? "Élaboré en " + p.country : p.country) : "Origine non précisée");
+
+const thumb = (url, w, h) =>
+  url && url.startsWith("https://res.cloudinary.com/") ? url.replace("/image/upload/", `/image/upload/c_fill,g_center,w_${w},h_${h},f_auto,q_auto/`)
+  : null;   // images Carrefour : en partie bloquées hors de carrefour.fr, on s'en passe
+const safeUrl = u => (u && /^https:\/\/www\.(mon-marche|carrefour)\.fr\//.test(u) ? u : null);
+const unitPhrase = u => ({ kg: "au kilo", l: "au litre", "pièce": "à la pièce" }[u] || "");
+
+/* ───────────────────────── DOM ───────────────────────── */
+function h(tag, props, ...kids) {
+  const el = document.createElement(tag);
+  if (props) for (const [k, v] of Object.entries(props)) {
+    if (v == null || v === false) continue;
+    if (k === "class") el.className = v;
+    else if (k === "text") el.textContent = v;
+    else if (k === "style") el.style.cssText = v;
+    else if (k.startsWith("on")) el.addEventListener(k.slice(2), v);
+    else el.setAttribute(k, v === true ? "" : v);
+  }
+  for (const kid of kids.flat(Infinity)) if (kid != null && kid !== false) el.append(kid instanceof Node ? kid : String(kid));
+  return el;
+}
+const SVGNS = "http://www.w3.org/2000/svg";
+function s(tag, attrs = {}, ...kids) {
+  const el = document.createElementNS(SVGNS, tag);
+  for (const [k, v] of Object.entries(attrs)) if (v != null) el.setAttribute(k, v);
+  for (const kid of kids.flat()) if (kid) el.append(kid);
+  return el;
+}
+const srcDot = src => h("i", { class: "sdot " + src, title: SRC_NAME[src], "aria-hidden": "true" });
+const img = (url, w, hgt, alt = "") => {
+  const src = thumb(url, w, hgt);
+  return src ? h("img", { src, alt, loading: "lazy", decoding: "async" }) : h("div", { class: "ph-img" });
+};
+
+/* ───────────────────────── Infobulle ───────────────────────── */
+const tipEl = document.getElementById("tip");
+function showTip(x, y, title, rows) {
+  tipEl.replaceChildren(
+    h("div", { class: "tt", text: title }),
+    ...rows.map(r => h("div", { class: "tr" },
+      r.color ? h("i", { class: r.box ? "key-box" : "key-line", style: `background:${r.color}` }) : null,
+      h("b", { text: r.value }), r.label ? h("span", { text: r.label }) : null))
+  );
+  tipEl.classList.add("show");
+  const { width, height } = tipEl.getBoundingClientRect();
+  const left = x + 16 + width > innerWidth - 8 ? x - width - 16 : x + 16;
+  const top = Math.min(innerHeight - height - 8, Math.max(8, y - height / 2));
+  tipEl.style.left = Math.max(8, left) + "px";
+  tipEl.style.top = top + "px";
+}
+const hideTip = () => tipEl.classList.remove("show");
+
+/* ───────────────────────── État ───────────────────────── */
+const COMPARE = [["prev", "veille"], ["7", "7 j"], ["30", "30 j"], ["first", "début"]];
+const COMPARE_LONG = { prev: "le relevé précédent", "7": "il y a 7 jours", "30": "il y a 30 jours", first: "le premier relevé" };
+const SORTS = [["rank", "Rang"], ["kgdesc", "€/kg ↓"], ["kgasc", "€/kg ↑"], ["delta", "Variation"], ["promo", "Promo"]];
+const store = {
+  get(k, d) { try { return localStorage.getItem("ardoise:" + k) ?? d; } catch { return d; } },
+  set(k, v) { try { localStorage.setItem("ardoise:" + k, v); } catch {} },
+};
+const defaultAisle = AISLES.some(a => a.slug === "best-sellers-fruits") ? "best-sellers-fruits" : "all";
+const state = {
+  src: SRC_NAME[store.get("src")] ? store.get("src") : "all",
+  aisle: AISLES.some(a => a.slug === store.get("aisle")) || store.get("aisle") === "all" ? store.get("aisle") : defaultAisle,
+  q: "",
+  promo: false,
+  compare: store.get("compare", "prev"),
+  sort: store.get("sort", "rank"),
+  view: store.get("vue", "list") === "cards" ? "cards" : "list",
+  showAllBars: false,
+  showAllCmp: false,
+};
+
+// Rayon mémorisé d'une autre enseigne que celle choisie : on repart de « tous les rayons »
+if (state.src !== "all" && AISLES.find(a => a.slug === state.aisle)?.src !== state.src) state.aisle = "all";
+
+function baseIndex(mode) {
+  if (LAST < 1) return null;
+  if (mode === "prev") return LAST - 1;
+  if (mode === "first") return "first";
+  const target = toDate(DATES[LAST]) - Number(mode) * 864e5;
+  let idx = null;
+  DATES.forEach((d, i) => { if (toDate(d) <= target) idx = i; });
+  return idx;
+}
+function baseline(p, bi) {
+  if (bi == null || !p.cur) return null;
+  if (bi === "first") return p.hist[0].i < LAST ? p.hist[0] : null;
+  let b = null;
+  for (const snap of p.hist) if (snap.i <= bi) b = snap;
+  return b;
+}
+function deltaOf(p, bi) {
+  const b = metric(baseline(p, bi)), c = metric(p.cur);
+  return b && c != null ? c / b - 1 : null;
+}
+const EPS = 0.0005;
+function discount(p) {
+  const c = p.cur;
+  if (!c || !c.promo) return 0;
+  return c.reg && c.price < c.reg ? 1 - c.price / c.reg : 0.0001;   // remises par lot : pas de baisse immédiate
+}
+
+function visible() {
+  const q = norm(state.q);
+  return PRODUCTS.filter(p => p.cur
+    && (state.src === "all" || p.src === state.src)
+    && (state.aisle === "all" || p.aisle === state.aisle)
+    && (!state.promo || p.cur.promo)
+    && (!q || norm([p.name, p.brand, p.variety, p.country, p.cat, p.unit, SRC_NAME[p.src]].join(" ")).includes(q)));
+}
+function sorted(list, bi) {
+  const aisleOrder = Object.fromEntries(AISLES.map((a, i) => [a.slug, i]));
+  const byRank = (a, b) => aisleOrder[a.aisle] - aisleOrder[b.aisle] || (a.cur.rank ?? 999) - (b.cur.rank ?? 999);
+  const kg = p => (p.pu === "pièce" ? -1 : p.cur.up ?? -1);   // le tri au kilo laisse de côté les prix à la pièce
+  const fns = {
+    rank: byRank,
+    kgdesc: (a, b) => kg(b) - kg(a),
+    kgasc: (a, b) => (kg(a) < 0) - (kg(b) < 0) || kg(a) - kg(b),
+    delta: (a, b) => Math.abs(deltaOf(b, bi) ?? -1) - Math.abs(deltaOf(a, bi) ?? -1) || byRank(a, b),
+    promo: (a, b) => discount(b) - discount(a) || byRank(a, b),
+  };
+  return [...list].sort(fns[state.sort] || byRank);
+}
+
+/* ───────────────────────── Petits composants ───────────────────────── */
+function deltaChip(d, isNew, first) {
+  if (d == null && (first || LAST < 1)) return h("span", { class: "punit", text: "1er relevé" });
+  if (d == null) return h("span", { class: "delta new" }, h("i", { text: "●" }), isNew ? "nouveau" : "—");
+  if (Math.abs(d) < EPS) return h("span", { class: "delta flat" }, h("i", { text: "=" }), "stable");
+  return d > 0
+    ? h("span", { class: "delta up", title: "Hausse" }, h("i", { text: "▲" }), pct(d))
+    : h("span", { class: "delta down", title: "Baisse" }, h("i", { text: "▼" }), pct(d));
+}
+function sparkline(p, w = 86, hgt = 28) {
+  const pts = p.hist.map(x => [x.i, metric(x)]).filter(x => x[1] != null);
+  if (pts.length < 2) return null;
+  const t0 = toDate(DATES[pts[0][0]]), t1 = toDate(DATES[pts.at(-1)[0]]);
+  const vals = pts.map(x => x[1]);
+  let lo = Math.min(...vals), hi = Math.max(...vals);
+  if (hi - lo < 1e-9) { lo -= 1; hi += 1; }
+  const X = i => 3 + (toDate(DATES[i]) - t0) / (t1 - t0 || 1) * (w - 6);
+  const Y = v => 3 + (1 - (v - lo) / (hi - lo)) * (hgt - 6);
+  const d = pts.map((pt, k) => (k ? "L" : "M") + X(pt[0]).toFixed(1) + " " + Y(pt[1]).toFixed(1)).join("");
+  const lastPt = pts.at(-1);
+  return s("svg", { viewBox: `0 0 ${w} ${hgt}`, width: w, height: hgt, "aria-hidden": "true" },
+    s("path", { d, fill: "none", stroke: "var(--chalk)", "stroke-width": 1.5, "stroke-linejoin": "round", "stroke-linecap": "round", opacity: .85 }),
+    s("circle", { cx: X(lastPt[0]), cy: Y(lastPt[1]), r: 3, fill: "var(--citron)", stroke: "var(--surface)", "stroke-width": 2 }));
+}
+function emptyState(big, text) {
+  return h("div", { class: "empty" }, h("div", { class: "big", text: big }), h("p", { text }));
+}
+function seg(host, options, current, onPick) {
+  host.querySelectorAll("button").forEach(b => b.remove());
+  for (const [val, label] of options) {
+    host.append(h("button", { type: "button", class: val === current ? "on" : null, "aria-pressed": String(val === current), text: label,
+      onclick: () => onPick(val) }));
+  }
+}
+
+/* ───────────────────────── Graphique en lignes (générique) ─────────────────────────
+   series : [{ label, color, width, pts: [[dateIndex, valeur]], tip: bool, pool: bool, payload }]
+   - tip  : toujours listée dans l'infobulle
+   - pool : lignes de contexte ; la plus proche du pointeur est mise en avant */
+function niceTicks(lo, hi, n = 4) {
+  const raw = (hi - lo) / n;
+  const mag = 10 ** Math.floor(Math.log10(raw));
+  const step = [1, 2, 2.5, 5, 10].map(m => m * mag).find(st => raw <= st) || 10 * mag;
+  const ticks = [];
+  for (let v = Math.floor(lo / step) * step; v <= hi + step * 0.5; v += step) ticks.push(+v.toFixed(6));
+  if (ticks.at(-1) < hi) ticks.push(ticks.at(-1) + step);
+  return ticks;
+}
+function lineChart(host, { series, height = 290, fmt, onPick, baseline: refLine }) {
+  host.replaceChildren();
+  const W = Math.max(280, host.clientWidth), H = height;
+  const m = { l: 46, r: 16, t: 12, b: 28 };
+  const all = series.flatMap(se => se.pts.map(pt => pt[1]));
+  const idxs = [...new Set(series.flatMap(se => se.pts.map(pt => pt[0])))].sort((a, b) => a - b);
+  if (!all.length) return;
+  let lo = Math.min(...all, refLine ?? Infinity), hi = Math.max(...all, refLine ?? -Infinity);
+  if (hi - lo < 1e-9) { const pad = Math.abs(lo) * 0.05 || 1; lo -= pad; hi += pad; }
+  const ticks = niceTicks(lo, hi, 4);
+  lo = Math.min(lo, ticks[0]); hi = Math.max(hi, ticks.at(-1));
+  const t0 = toDate(DATES[idxs[0]]), t1 = toDate(DATES[idxs.at(-1)]);
+  const X = i => (t1 - t0 ? m.l + (toDate(DATES[i]) - t0) / (t1 - t0) * (W - m.l - m.r) : m.l + (W - m.l - m.r) / 2);
+  const Y = v => m.t + (1 - (v - lo) / (hi - lo)) * (H - m.t - m.b);
+
+  const root = s("svg", { viewBox: `0 0 ${W} ${H}`, height: H, role: "img" });
+  for (const t of ticks) {
+    root.append(s("line", { x1: m.l, x2: W - m.r, y1: Y(t), y2: Y(t), stroke: t === refLine ? "#3E5A4A" : "var(--grid)", "stroke-width": 1 }));
+    const label = s("text", { x: m.l - 8, y: Y(t) + 4, "text-anchor": "end", "font-size": 11, fill: "var(--muted)", style: "font-variant-numeric:tabular-nums" });
+    label.textContent = fmt(t, true);
+    root.append(label);
+  }
+  // Étiquettes de dates : au plus ~6, réparties
+  const maxLabels = Math.max(2, Math.floor((W - m.l - m.r) / 90));
+  const stepL = Math.max(1, Math.ceil(idxs.length / maxLabels));
+  idxs.forEach((i, k) => {
+    if (k % stepL && k !== idxs.length - 1) return;
+    if (k !== idxs.length - 1 && idxs.length - 1 - k < stepL * 0.6) return;
+    const tx = s("text", { x: X(i), y: H - 8, "text-anchor": k === 0 && idxs.length > 1 ? "start" : k === idxs.length - 1 && idxs.length > 1 ? "end" : "middle", "font-size": 11, fill: "var(--muted)" });
+    tx.textContent = shortDay(DATES[i]);
+    root.append(tx);
+  });
+  const pathOf = pts => pts.map((pt, k) => (k ? "L" : "M") + X(pt[0]).toFixed(1) + " " + Y(pt[1]).toFixed(1)).join("");
+  const layer = s("g");
+  root.append(layer);
+  for (const se of series) {
+    if (se.pts.length > 1) layer.append(s("path", { d: pathOf(se.pts), fill: "none", stroke: se.color, "stroke-width": se.width || 2, "stroke-linejoin": "round", "stroke-linecap": "round", opacity: se.opacity ?? 1 }));
+    if (se.endDot || se.pts.length === 1) {
+      const pt = se.pts.at(-1);
+      layer.append(s("circle", { cx: X(pt[0]), cy: Y(pt[1]), r: se.pool ? 2.5 : 4, fill: se.color, stroke: "var(--surface)", "stroke-width": 2 }));
+    }
+  }
+  const hl = s("g");           // ligne mise en avant au survol
+  const cross = s("g", { opacity: 0 });
+  const vline = s("line", { y1: m.t, y2: H - m.b, stroke: "var(--text-2)", "stroke-width": 1, opacity: .5 });
+  cross.append(vline);
+  root.append(hl, cross);
+  const hit = s("rect", { x: m.l - 10, y: 0, width: W - m.l - m.r + 20, height: H, fill: "transparent", tabindex: 0, style: "cursor:crosshair;outline:none" });
+  root.append(hit);
+  host.append(root);
+
+  let picked = null, cursor = idxs.length - 1;
+  const valueAt = (se, i) => { const pt = se.pts.find(q => q[0] === i); return pt ? pt[1] : null; };
+  function update(k, py, cx, cy) {
+    cursor = k;
+    const i = idxs[k], x = X(i);
+    vline.setAttribute("x1", x); vline.setAttribute("x2", x);
+    cross.setAttribute("opacity", 1);
+    cross.querySelectorAll("circle").forEach(c => c.remove());
+    hl.replaceChildren();
+    const rows = [];
+    for (const se of series.filter(q => q.tip)) {
+      const v = valueAt(se, i);
+      if (v == null) continue;
+      cross.append(s("circle", { cx: x, cy: Y(v), r: 4.5, fill: se.color, stroke: "var(--surface)", "stroke-width": 2 }));
+      rows.push({ color: se.color, value: fmt(v), label: se.label });
+    }
+    picked = null;
+    const pool = series.filter(q => q.pool);
+    if (pool.length && py != null) {
+      let best = Infinity;
+      for (const se of pool) {
+        const v = valueAt(se, i);
+        if (v == null) continue;
+        const dist = Math.abs(Y(v) - py);
+        if (dist < best) { best = dist; picked = se; }
+      }
+      if (picked && best < 40) {
+        hl.append(s("path", { d: pathOf(picked.pts), fill: "none", stroke: "var(--citron)", "stroke-width": 2, "stroke-linejoin": "round" }));
+        const v = valueAt(picked, i);
+        hl.append(s("circle", { cx: x, cy: Y(v), r: 4.5, fill: "var(--citron)", stroke: "var(--surface)", "stroke-width": 2 }));
+        rows.push({ color: "var(--citron)", value: fmt(v), label: picked.label });
+      } else picked = null;
+    }
+    const rect = root.getBoundingClientRect();
+    showTip(cx ?? rect.left + x * rect.width / W, cy ?? rect.top + rect.height / 2, fLong.format(toDate(DATES[i])), rows);
+    hit.style.cursor = picked && onPick ? "pointer" : "crosshair";
+  }
+  const nearest = px => {
+    let best = 0, bd = Infinity;
+    idxs.forEach((i, k) => { const d = Math.abs(X(i) - px); if (d < bd) { bd = d; best = k; } });
+    return best;
+  };
+  hit.addEventListener("pointermove", e => {
+    const rect = root.getBoundingClientRect();
+    const px = (e.clientX - rect.left) * W / rect.width, py = (e.clientY - rect.top) * H / rect.height;
+    update(nearest(px), py, e.clientX, e.clientY);
+  });
+  const leave = () => { cross.setAttribute("opacity", 0); hl.replaceChildren(); hideTip(); picked = null; };
+  hit.addEventListener("pointerleave", leave);
+  hit.addEventListener("blur", leave);
+  hit.addEventListener("focus", () => update(cursor, null));
+  hit.addEventListener("keydown", e => {
+    if (e.key === "ArrowLeft") { update(Math.max(0, cursor - 1), null); e.preventDefault(); }
+    if (e.key === "ArrowRight") { update(Math.min(idxs.length - 1, cursor + 1), null); e.preventDefault(); }
+  });
+  hit.addEventListener("click", () => { if (picked && onPick) onPick(picked.payload); });
+}
+
+/* ───────────────────────── Rendu des sections ───────────────────────── */
+function renderHeader() {
+  const n = PRODUCTS.filter(p => p.cur).length;
+  document.getElementById("meta").replaceChildren(
+    h("span", { class: "dot" }),
+    h("span", { text: `Relevé du ${day(DATES[LAST])}` }),
+    h("span", { text: "·" }),
+    h("span", { text: plural(DATES.length, "relevé", "relevés") }),
+    h("span", { text: "·" }),
+    h("span", { text: plural(n, "produit", "produits") }));
+  const lede = document.getElementById("lede");
+  const count = src => PRODUCTS.filter(p => p.cur && p.src === src).length;
+  const desc = { mm: ["best-sellers", "de mon-marche.fr"], cf: ["produits", "de carrefour.fr"] };
+  lede.replaceChildren(
+    ...SOURCES.flatMap((s, k) => [k ? (k === SOURCES.length - 1 ? " et " : ", ") : "Les ",
+      h("strong", { text: `${count(s.id)} ${desc[s.id]?.[0] || "produits"}` }), " " + (desc[s.id]?.[1] || s.name)]),
+    ", relevés chaque jour : prix affiché, prix au kilo, promos, évolution",
+    SOURCES.length > 1 ? " et comparaison des enseignes sur les mêmes produits." : " produit par produit.",
+    DATES.length === 1 ? ` Premier relevé le ${fLong.format(toDate(DATES[0]))} : les courbes se dessinent dès le prochain passage.` : ` Historique depuis le ${fLong.format(toDate(DATES[0]))}.`);
+  const gen = new Date(DATA.generatedAt);
+  document.getElementById("foot").replaceChildren(
+    "Sources : mon-marche.fr (relevé à 7 h) et carrefour.fr (7 h 15), automatiquement chaque matin",
+    ` · page générée le ${gen.toLocaleString("fr-FR", { dateStyle: "long", timeStyle: "short", timeZone: "Europe/Paris" })}`);
+}
+
+function renderSrcSeg() {
+  const host = document.getElementById("srcSeg");
+  host.hidden = SOURCES.length < 2;
+  host.replaceChildren(...[["all", "Toutes"], ...SOURCES.map(s => [s.id, s.name])].map(([val, label]) =>
+    h("button", { type: "button", class: val === state.src ? "on" : null, "aria-pressed": String(val === state.src),
+      onclick: () => {
+        state.src = val; store.set("src", val); state.showAllBars = false;
+        const aisle = AISLES.find(a => a.slug === state.aisle);
+        if (aisle && val !== "all" && aisle.src !== val) { state.aisle = "all"; store.set("aisle", "all"); }
+        render();
+      } },
+      val !== "all" ? srcDot(val) : null, label)));
+}
+
+function renderChips() {
+  const host = document.getElementById("chips");
+  const inSrc = p => state.src === "all" || p.src === state.src;
+  const count = slug => PRODUCTS.filter(p => p.cur && inSrc(p) && (slug === "all" || p.aisle === slug)).length;
+  const aisles = AISLES.filter(a => state.src === "all" || a.src === state.src);
+  host.replaceChildren(...[{ slug: "all", name: "Tous les rayons" }, ...aisles].map(a =>
+    h("button", { type: "button", role: "tab", class: "chip" + (state.aisle === a.slug ? " on" : ""), "aria-selected": String(state.aisle === a.slug),
+      onclick: () => { state.aisle = a.slug; state.showAllBars = false; store.set("aisle", a.slug); render(); } },
+      a.src && state.src === "all" && SOURCES.length > 1 ? srcDot(a.src) : null, a.name, h("span", { class: "n", text: count(a.slug) }))));
+  const active = host.querySelector(".on");
+  const left = active ? active.getBoundingClientRect().left - host.getBoundingClientRect().left + host.scrollLeft : 0;
+  if (active && (left < host.scrollLeft || left + active.offsetWidth > host.scrollLeft + host.clientWidth))
+    host.scrollLeft = left - 24;
+}
+
+function aisleIndex(list) {
+  // Indice moyen (base 100 au premier relevé de chaque produit) pour chaque date
+  const sum = new Map(), cnt = new Map();
+  const per = list.map(p => {
+    const pts = p.hist.map(x => [x.i, metric(x)]).filter(x => x[1] != null);
+    if (!pts.length) return null;
+    const base = pts[0][1];
+    const idx = pts.map(([i, v]) => [i, v / base * 100]);
+    idx.forEach(([i, v]) => { sum.set(i, (sum.get(i) || 0) + v); cnt.set(i, (cnt.get(i) || 0) + 1); });
+    return { p, idx };
+  }).filter(Boolean);
+  const avg = [...sum.keys()].sort((a, b) => a - b).map(i => [i, sum.get(i) / cnt.get(i)]);
+  return { per, avg };
+}
+
+function renderKpis(list, bi) {
+  const deltas = list.map(p => deltaOf(p, bi)).filter(d => d != null);
+  const ups = deltas.filter(d => d > EPS).length, downs = deltas.filter(d => d < -EPS).length;
+  const promos = list.filter(p => p.cur.promo);
+  const disc = promos.map(discount).filter(d => d > 0.001);
+  const avgDisc = disc.length ? disc.reduce((a, b) => a + b, 0) / disc.length : null;
+  const mean = deltas.length ? deltas.reduce((a, b) => a + b, 0) / deltas.length : null;
+  const firstOnly = list.every(p => p.hist.length < 2);
+  const scope = state.aisle !== "all" ? AISLE_NAME[state.aisle].toLowerCase() : state.src === "all" ? "tous rayons" : SRC_NAME[state.src];
+  const nAisles = AISLES.filter(a => state.src === "all" || a.src === state.src).length;
+
+  const hero = h("div", { class: "tile hero" },
+    h("div", { class: "lab", text: `Variation moyenne du prix au kilo · ${scope}` }));
+  if (mean != null) {
+    hero.append(
+      h("div", { class: "val" }, h("span", { class: mean > EPS ? "ico up-ico" : mean < -EPS ? "ico down-ico" : "ico", text: mean > EPS ? "▲" : mean < -EPS ? "▼" : "=" }), pct(mean)),
+      h("div", { class: "sub", text: `vs ${COMPARE_LONG[state.compare]} · ${plural(deltas.length, "produit comparé", "produits comparés")}, hors promos` }));
+  } else {
+    hero.append(
+      h("div", { class: "val small", text: firstOnly ? "Premier relevé" : "Pas encore d'historique" }),
+      h("div", { class: "sub", text: firstOnly ? `Base de référence posée le ${day(DATES[0])} — la variation s'affiche dès le prochain relevé.` : `Pas de relevé assez ancien pour comparer à ${COMPARE_LONG[state.compare]}.` }));
+  }
+  const kgs = list.filter(p => p.cur.up != null && (p.pu || "kg") === "kg").sort((a, b) => a.cur.up - b.cur.up);
+  if (mean == null && kgs.length) {
+    const fact = (lab, p) => h("div", { class: "stat" }, h("div", { class: "lab", text: lab }),
+      h("div", { class: "v num", text: perU(p.cur.up, "kg") }), h("div", { class: "punit", style: "white-space:nowrap;overflow:hidden;text-overflow:ellipsis", text: p.name }));
+    hero.append(h("div", { class: "stats", style: "grid-template-columns:repeat(3,1fr);margin-top:auto" },
+      fact("Le moins cher au kilo", kgs[0]), fact("Prix médian au kilo", kgs[Math.floor((kgs.length - 1) / 2)]), fact("Le plus cher au kilo", kgs.at(-1))));
+  }
+  const { avg } = aisleIndex(list);
+  if (avg.length > 1) {
+    const sp = h("div", { class: "spark" });
+    hero.append(sp);
+    requestAnimationFrame(() => heroSpark(sp, avg));
+  }
+  const tile = (lab, val, sub, ico, icoClass) => h("div", { class: "tile" }, h("div", { class: "lab", text: lab }),
+    h("div", { class: "val" }, ico ? h("span", { class: "ico " + icoClass, text: ico }) : null, val), h("div", { class: "sub", text: sub }));
+  document.getElementById("kpis").replaceChildren(
+    hero,
+    h("div", { class: "kpi-grid" },
+    tile("Produits suivis", nf0.format(list.length), state.aisle !== "all" ? `rayon ${AISLE_NAME[state.aisle]}`
+      : `${plural(nAisles, "rayon", "rayons")}` + (state.src === "all" && SOURCES.length > 1 ? ` · ${SOURCES.length} enseignes` : "")),
+    tile("En promo", nf0.format(promos.length), avgDisc != null ? `remise immédiate moy. ${pct(-avgDisc)}` : promos.length ? "offres par lot" : "aucune promo en cours", "%", "promo-ico"),
+    tile("Hausses", nf0.format(ups), mean == null ? "en attente d'historique" : `vs ${COMPARE_LONG[state.compare]}`, "▲", "up-ico"),
+    tile("Baisses", nf0.format(downs), mean == null ? "en attente d'historique" : `vs ${COMPARE_LONG[state.compare]}`, "▼", "down-ico")));
+}
+function heroSpark(host, avg) {
+  const W = host.clientWidth || 300, H = 54;
+  const t0 = toDate(DATES[avg[0][0]]), t1 = toDate(DATES[avg.at(-1)[0]]);
+  const vals = avg.map(a => a[1]);
+  let lo = Math.min(...vals, 100), hi = Math.max(...vals, 100);
+  if (hi - lo < 0.5) { lo -= 0.5; hi += 0.5; }
+  const X = i => 2 + (toDate(DATES[i]) - t0) / (t1 - t0 || 1) * (W - 8);
+  const Y = v => 4 + (1 - (v - lo) / (hi - lo)) * (H - 8);
+  const line = avg.map((a, k) => (k ? "L" : "M") + X(a[0]).toFixed(1) + " " + Y(a[1]).toFixed(1)).join("");
+  const area = line + `L${X(avg.at(-1)[0]).toFixed(1)} ${H}L${X(avg[0][0]).toFixed(1)} ${H}Z`;
+  const lastPt = avg.at(-1);
+  host.replaceChildren(s("svg", { viewBox: `0 0 ${W} ${H}`, width: "100%", height: H, "aria-label": "Indice moyen du rayon" },
+    s("line", { x1: 0, x2: W, y1: Y(100), y2: Y(100), stroke: "#3E5A4A", "stroke-width": 1 }),
+    s("path", { d: area, fill: "var(--citron)", opacity: .1 }),
+    s("path", { d: line, fill: "none", stroke: "var(--citron)", "stroke-width": 2, "stroke-linejoin": "round" }),
+    s("circle", { cx: X(lastPt[0]), cy: Y(lastPt[1]), r: 4, fill: "var(--citron)", stroke: "#18291F", "stroke-width": 2 })));
+}
+
+function renderIndex(list) {
+  const host = document.getElementById("idxChart");
+  const legend = document.getElementById("idxLegend");
+  if (list.length && list.every(p => p.hist.length < 2)) {
+    legend.replaceChildren();
+    host.replaceChildren(emptyState("J+1", `Il faut deux relevés pour tracer une courbe. Premier relevé : ${day(DATES[list[0].hist[0].i])} — la suite dès demain.`));
+    return;
+  }
+  const { per } = aisleIndex(list);
+  if (!per.length) { host.replaceChildren(emptyState("∅", "Aucun produit ne correspond aux filtres.")); legend.replaceChildren(); return; }
+  // Une moyenne par enseigne, dans la couleur de l'enseigne
+  const avgs = SOURCES.map(s => ({ s, avg: aisleIndex(list.filter(p => p.src === s.id)).avg })).filter(a => a.avg.length);
+  const many = SOURCES.length > 1;
+  legend.replaceChildren(
+    ...avgs.map(({ s }) => h("span", {}, h("i", { class: "key-line", style: `background:var(--${s.id})` }), many ? "Moyenne " + s.name : "Moyenne")),
+    h("span", {}, h("i", { class: "key-line", style: "background:var(--ghost)" }), "Chaque produit"));
+  const fmt = (v, axis) => (axis ? nf0.format(v) : nf1.format(v));
+  lineChart(host, {
+    height: 390, fmt, baseline: 100,
+    series: [
+      ...per.map(({ p, idx }) => ({ label: many ? `${p.name} · ${SRC_NAME[p.src]}` : p.name, color: "var(--ghost)", width: 1.4, pts: idx, pool: true, payload: p, opacity: .9 })),
+      ...avgs.map(({ s, avg }) => ({ label: many ? "Moyenne " + s.name : "Moyenne", color: `var(--${s.id})`, width: 2.5, pts: avg, tip: true, endDot: true })),
+    ],
+    onPick: openDrawer,
+  });
+}
+
+function renderMovers(list, bi) {
+  const host = document.getElementById("movers");
+  document.getElementById("moversSub").textContent = `Plus fortes variations du prix au kilo hors promo, vs ${COMPARE_LONG[state.compare]}.`;
+  if (list.every(p => p.hist.length < 2)) { host.replaceChildren(emptyState("0", "Aucune variation mesurable avec un seul relevé. Les hausses et baisses apparaîtront ici.")); return; }
+  const withD = list.map(p => ({ p, d: deltaOf(p, bi) })).filter(x => x.d != null);
+  const ups = withD.filter(x => x.d > EPS).sort((a, b) => b.d - a.d).slice(0, 4);
+  const downs = withD.filter(x => x.d < -EPS).sort((a, b) => a.d - b.d).slice(0, 4);
+  const row = ({ p, d }) => {
+    const b = baseline(p, bi);
+    return h("button", { type: "button", class: "row-btn", onclick: () => openDrawer(p) },
+      h("div", { style: "min-width:0" }, h("div", { class: "t" }, srcDot(p.src), " ", p.name),
+        h("div", { class: "s num", text: `${p.cur.rup != null ? perU(b.rup, p.pu) + " → " + perU(p.cur.rup, p.pu) : eur(b.reg) + " → " + eur(p.cur.reg)}` })),
+      h("div", { class: "r" }, deltaChip(d)));
+  };
+  const col = (title, ico, cls, items, emptyTxt) => h("div", {},
+    h("h3", {}, h("span", { class: cls, text: ico }), title),
+    items.length ? h("div", { class: "list" }, items.map(row)) : h("p", { class: "punit", style: "padding:6px 8px", text: emptyTxt }));
+  host.replaceChildren(withD.length
+    ? h("div", { class: "movers" },
+      col("Hausses", "▲", "up-ico", ups, "Aucune hausse."),
+      col("Baisses", "▼", "down-ico", downs, "Aucune baisse."))
+    : emptyState("—", `Pas de point de comparaison avec ${COMPARE_LONG[state.compare]}.`));
+}
+
+function productCard(p, bi) {
+  const c = p.cur;
+  const isPromo = !!c.promo;
+  const d = deltaOf(p, bi);
+  const origin = [SOURCES.length > 1 ? SRC_NAME[p.src] : null, originText(p), p.variety].filter(Boolean).join(" · ");
+  return h("button", { type: "button", class: "pcard", onclick: () => openDrawer(p), "aria-label": p.name },
+    h("div", { class: "pimg" },
+      img(p.img, 480, 360, p.name),
+      c.rank ? h("span", { class: "rank", text: "#" + c.rank }) : null,
+      isPromo ? h("span", { class: "tag", text: c.promo }) : null),
+    h("div", { class: "pbody" },
+      h("div", { class: "porig" }, srcDot(p.src), " ", origin),
+      h("div", { class: "pname", text: p.name }),
+      h("div", { class: "punit", text: p.unit || " " }),
+      h("div", { class: "pprice num" },
+        h("span", { class: "p", text: eur(c.price) }),
+        isPromo && c.reg > c.price ? h("span", { class: "old", text: eur(c.reg) }) : null,
+        c.up != null ? h("span", { class: "kg", text: perU(c.up, p.pu) }) : null),
+      h("div", { class: "pfoot" }, deltaChip(d, p.hist.length === 1 && !firstDay(p), firstDay(p)), sparkline(p))));
+}
+
+function productList(list, bi) {
+  const cols = [
+    ["Rang", "rank", "r"], ["Produit", null], ["Origine", null], ["Prix", null, "r"], ["Prix unitaire", "kgdesc", "r"],
+    ["Promo", "promo"], ["Variation", "delta", "r"], ["Tendance", null],
+  ];
+  const head = h("tr", {}, cols.map(([label, key, cls]) => h("th", {
+    class: [cls, key && state.sort === key ? "sorted" : null].filter(Boolean).join(" ") || null,
+    onclick: key ? () => { state.sort = key; store.set("sort", key); render(); } : null, text: label })));
+  const rows = list.map(p => {
+    const c = p.cur, d = deltaOf(p, bi);
+    return h("tr", { onclick: () => openDrawer(p) },
+      h("td", { class: "r num", text: c.rank ?? "" }),
+      h("td", { class: "pn" }, h("b", { text: p.name }),
+        h("small", {}, srcDot(p.src), [SOURCES.length > 1 ? SRC_NAME[p.src] : null, state.aisle === "all" ? AISLE_NAME[p.aisle] : null, p.unit].filter(Boolean).join(" · "))),
+      h("td", { text: p.country ? flag(p.country) + " " + p.country : "—" }),
+      h("td", { class: "r num" }, eur(c.price), c.promo && c.reg > c.price ? h("small", { class: "old", text: eur(c.reg) }) : null,
+        c.up != null ? h("small", { class: "pu-m", text: perU(c.up, p.pu) }) : null),   // téléphone : le prix unitaire sous le prix
+      h("td", { class: "r num", text: c.up != null ? perU(c.up, p.pu) : "—" }),
+      h("td", {}, c.promo ? h("span", { class: "tag", text: c.promo }) : null),
+      h("td", { class: "r" }, deltaChip(d, p.hist.length === 1 && !firstDay(p), firstDay(p))),
+      h("td", {}, sparkline(p, 86, 22)));
+  });
+  return h("div", { class: "tablewrap" }, h("table", { class: "ltable" }, h("thead", {}, head), h("tbody", {}, rows)));
+}
+
+function renderProducts(list, bi) {
+  const host = document.getElementById("products");
+  document.getElementById("prodTitle").textContent = state.aisle === "all" ? "Tous les produits" : AISLE_NAME[state.aisle];
+  document.getElementById("prodSub").textContent = `${plural(list.length, "produit", "produits")} · cliquez sur un produit pour sa fiche et son historique`;
+  seg(document.getElementById("sort"), SORTS, state.sort, v => { state.sort = v; store.set("sort", v); render(); });
+  seg(document.getElementById("view"), [["list", "Liste"], ["cards", "Étal"]], state.view, v => { state.view = v; store.set("vue", v); render(); });
+  if (!list.length) { host.replaceChildren(emptyState("∅", "Aucun produit ne correspond à ces filtres.")); return; }
+  const items = sorted(list, bi);
+  const body = state.view === "cards" ? h("div", { class: "pgrid" }, items.map(p => productCard(p, bi))) : productList(items, bi);
+  // Sortis du classement depuis le relevé précédent de leur enseigne
+  const gone = PRODUCTS.filter(p => !p.cur && p.hist.at(-1).i === SRC_DATES[p.src].at(-2)
+    && (state.src === "all" || p.src === state.src) && (state.aisle === "all" || p.aisle === state.aisle));
+  host.replaceChildren(body, gone.length ? h("div", { class: "gone" }, "Sortis du classement depuis le dernier relevé : ",
+    gone.map((p, k) => [k ? ", " : "", h("button", { type: "button", text: p.name, onclick: () => openDrawer(p) })])) : null);
+}
+
+function barRows(host, rows, { max, fmt, tip, limit, onMore }) {
+  const shown = limit ? rows.slice(0, limit) : rows;
+  const RESERVE = 118;   // place réservée à droite pour la valeur en bout de barre
+  host.replaceChildren(h("div", { class: "bars" }, shown.map(r => {
+    const f = v => `calc((100% - ${RESERVE}px) * ${Math.max(0, v / max).toFixed(4)})`;
+    const track = h("div", { class: "btrack" });
+    if (r.ghost != null && r.ghost > r.value) track.append(h("div", { class: "bar ghost", style: `width:${f(r.ghost)}` }));
+    track.append(h("div", { class: "bar " + (r.cls || ""), style: `width:${f(r.value)}` }));
+    track.append(h("div", { class: "bval num", style: `left:calc(${f(Math.max(r.value, r.ghost || 0))} + 8px)` }, fmt(r)));
+    const el = h("button", { type: "button", class: "brow", onclick: r.onclick || null },
+      h("div", { class: "bl" }, r.dot ? [srcDot(r.dot), " "] : null, r.flag ? h("span", { class: "fl", text: r.flag }) : null, r.label), track);
+    const showT = e => { const b = el.getBoundingClientRect(); showTip(e?.clientX ?? b.right - 40, e?.clientY ?? b.top + b.height / 2, tip(r).title, tip(r).rows); };
+    el.addEventListener("pointermove", showT);
+    el.addEventListener("pointerleave", hideTip);
+    el.addEventListener("focus", () => showT());
+    el.addEventListener("blur", hideTip);
+    return el;
+  })));
+  if (limit && rows.length > limit) host.append(h("button", { type: "button", class: "more", text: `Voir les ${rows.length} produits`, onclick: onMore }));
+}
+
+function renderKgBars(list) {
+  const host = document.getElementById("kgBars");
+  const rows = list.filter(p => p.cur.up != null && p.pu !== "pièce").sort((a, b) => b.cur.up - a.cur.up).map(p => {
+    const c = p.cur;
+    const promo = !!c.promo && c.rup != null && c.rup > c.up + 1e-9;
+    return { p, dot: SOURCES.length > 1 ? p.src : null, label: p.name, value: c.up, ghost: promo ? c.rup : null, cls: promo ? "promo" : "", onclick: () => openDrawer(p) };
+  });
+  if (!rows.length) { host.replaceChildren(emptyState("∅", "Aucun prix au kilo pour ces filtres.")); return; }
+  const max = Math.max(...rows.map(r => r.ghost || r.value));
+  barRows(host, rows, {
+    max,
+    limit: state.showAllBars ? 0 : 24,
+    onMore: () => { state.showAllBars = true; renderKgBars(list); },
+    fmt: r => [perU(r.value, r.p.pu), r.ghost ? h("small", { text: "  au lieu de " + nf2.format(r.ghost) }) : null],
+    tip: r => ({ title: r.p.name, rows: [
+      { color: r.ghost ? "var(--promo)" : "var(--chalk)", box: true, value: perU(r.value, r.p.pu), label: r.ghost ? "prix promo" : "prix au " + (r.p.pu || "kg") },
+      r.ghost ? { color: "rgba(255,143,63,.35)", box: true, value: perU(r.ghost, r.p.pu), label: "prix normal" } : null,
+      { value: eur(r.p.cur.price), label: r.p.unit || "" },
+    ].filter(Boolean) }),
+  });
+}
+
+function renderOrigins(list) {
+  const host = document.getElementById("origins");
+  const counts = new Map();
+  for (const p of list) {
+    const k = p.country || "Non précisée";
+    const e = counts.get(k) || { n: 0, made: 0 };
+    e.n++; if (p.made) e.made++;
+    counts.set(k, e);
+  }
+  let rows = [...counts.entries()].sort((a, b) => b[1].n - a[1].n);
+  if (rows.length > 9) {
+    const rest = rows.slice(8).reduce((a, [, e]) => a + e.n, 0);
+    rows = [...rows.slice(0, 8), ["Autres pays", { n: rest, made: 0, other: true }]];
+  }
+  if (!rows.length) { host.replaceChildren(emptyState("∅", "Aucun produit.")); return; }
+  const max = Math.max(...rows.map(r => r[1].n));
+  barRows(host, rows.map(([country, e]) => ({ label: country, flag: e.other || country === "Non précisée" ? "·" : flag(country), value: e.n, made: e.made, cls: "" })), {
+    max,
+    fmt: r => [plural(r.value, "produit", "produits"), r.made ? h("small", { text: ` dont ${r.made} élaboré${r.made > 1 ? "s" : ""}` }) : null],
+    tip: r => ({ title: r.label, rows: [{ color: "var(--chalk)", box: true, value: plural(r.value, "produit", "produits"), label: `${Math.round(r.value / list.length * 100)} % de la sélection` }] }),
+  });
+}
+
+function renderPromos(list) {
+  const host = document.getElementById("promos");
+  const promos = list.filter(p => p.cur.promo).sort((a, b) => discount(b) - discount(a));
+  document.getElementById("promoSub").textContent = promos.length ? `${plural(promos.length, "produit remisé", "produits remisés")} aujourd'hui, plus grosse remise en premier.` : "Aucune promo sur cette sélection.";
+  if (!promos.length) { host.replaceChildren(emptyState("0 %", "Pas de promo en cours sur cette sélection.")); return; }
+  host.replaceChildren(h("div", { class: "list" }, promos.map(p => {
+    const c = p.cur;
+    const until = c.promoEnd ? `jusqu'au ${day(c.promoEnd)}` : "durée non précisée";
+    return h("button", { type: "button", class: "row-btn", onclick: () => openDrawer(p) },
+      h("div", { style: "min-width:0" },
+        h("div", { class: "t" }, srcDot(p.src), " ", p.name),
+        h("div", { class: "s" }, h("span", { class: "tag", style: "font-size:11.5px;padding:2px 6px 1px;margin-right:6px", text: c.promo }), until)),
+      h("div", { class: "r num" }, h("span", { class: "big", text: eur(c.price) }), c.reg > c.price ? h("span", { class: "old", text: eur(c.reg) }) : null));
+  })));
+}
+
+/* ───────────────────────── Comparaison entre enseignes ─────────────────────────
+   Une famille = le même produit chez plusieurs enseignes (rapprochement fait par dashboard.py, FAMILIES).
+   Pour chaque enseigne on retient le prix le plus bas de la famille, hors promo, au kilo ; à la pièce si la famille
+   l'autorise et que le kilo manque d'un côté. */
+const [SA, SB] = SOURCES;
+const FAMILIES = (DATA.families || []).map(f => ({ ...f, key: f.name + (f.bio ? " bio" : ""), members: f.ids.map(id => BY_ID[id]).filter(Boolean) }));
+function famValue(p, snap, unit) {
+  if (!snap) return null;
+  if (unit === "kg" || unit === "l") return p.pu === unit ? snap.rup : null;
+  if (p.pu === "pièce") return snap.rup;            // prix à la pièce donné par l'enseigne
+  return p.pieces ? snap.reg / p.pieces : null;     // vendu à la pièce, par N, en N têtes, « 10 sacs »…
+}
+// Unité affichée : kg, l, pièce, ou l'unité de comptage de la famille (sac, rouleau, lavage…)
+const famUnit = r => (r.unit === "pièce" ? r.f.per || "pièce" : r.unit);
+const famPhrase = r => (r.unit === "pièce" && r.f.per ? "par " + r.f.per : unitPhrase(r.unit));
+function famBest(f, src, unit, i) {                // i : index de date ; absent = relevé actuel
+  let best = null;
+  for (const p of f.members) {
+    if (p.src !== src) continue;
+    const snap = i == null ? p.cur : p.hist.find(x => x.i === i);
+    const v = famValue(p, snap, unit);
+    if (v != null && (!best || v < best.v)) best = { v, p };
+  }
+  return best;
+}
+function famRow(f) {
+  for (const unit of f.piece ? ["kg", "l", "pièce"] : ["kg", "l"]) {
+    const a = famBest(f, SA.id, unit), b = famBest(f, SB.id, unit);
+    if (a && b) return { f, unit, a, b, gap: b.v / a.v - 1 };   // gap < 0 : SB moins cher que SA
+  }
+  return null;
+}
+const famSeries = (f, unit, src) => DATES.map((_, i) => [i, famBest(f, src, unit, i)?.v]).filter(x => x[1] != null);
+const CMP_LIMIT = 12;   // lignes affichées avant « Voir les N produits comparés »
+const CMP = SB ? FAMILIES.map(famRow).filter(Boolean).sort((x, y) => x.gap - y.gap) : [];
+const CMP_OFF = SB ? FAMILIES.filter(f => !CMP.some(r => r.f === f) && SOURCES.every(s => f.members.some(p => p.cur && p.src === s.id))) : [];
+// Qui est moins cher, et de combien par rapport à l'autre (toujours un pourcentage négatif)
+function cheaper(r) {
+  if (Math.abs(r.gap) < EPS) return { src: null, d: 0 };
+  return r.gap < 0 ? { src: SB.id, d: r.gap } : { src: SA.id, d: r.a.v / r.b.v - 1 };
+}
+const cheaperText = r => { const c = cheaper(r); return c.src ? [h("b", { text: SRC_NAME[c.src] }), " " + pct(c.d)] : ["même prix"]; };
+
+function famSpark(r, w = 86, hgt = 24) {
+  const sa = famSeries(r.f, r.unit, SA.id), sb = famSeries(r.f, r.unit, SB.id);
+  const pts = [...sa, ...sb];
+  if (Math.max(sa.length, sb.length) < 2) return h("span", { class: "punit", text: "—" });
+  const idx = pts.map(x => x[0]), vals = pts.map(x => x[1]);
+  const t0 = toDate(DATES[Math.min(...idx)]), t1 = toDate(DATES[Math.max(...idx)]);
+  let lo = Math.min(...vals), hi = Math.max(...vals);
+  if (hi - lo < 1e-9) { lo -= 1; hi += 1; }
+  const X = i => 3 + (toDate(DATES[i]) - t0) / (t1 - t0 || 1) * (w - 6);
+  const Y = v => 3 + (1 - (v - lo) / (hi - lo)) * (hgt - 6);
+  const line = (ser, color) => ser.length > 1
+    ? s("path", { d: ser.map((pt, k) => (k ? "L" : "M") + X(pt[0]).toFixed(1) + " " + Y(pt[1]).toFixed(1)).join(""), fill: "none", stroke: color, "stroke-width": 1.5, "stroke-linejoin": "round" })
+    : s("circle", { cx: X(ser[0][0]), cy: Y(ser[0][1]), r: 2.5, fill: color });
+  return s("svg", { viewBox: `0 0 ${w} ${hgt}`, width: w, height: hgt, "aria-hidden": "true" }, line(sa, "var(--mm)"), line(sb, "var(--cf)"));
+}
+
+function renderCompare() {
+  const panel = document.getElementById("cmpPanel");
+  panel.hidden = !SB;
+  if (!SB) return;
+  const host = document.getElementById("cmp");
+  const q = norm(state.q);
+  const rows = CMP.filter(r => !q || norm([r.f.key, ...r.f.members.map(p => p.name)].join(" ")).includes(q));
+  if (!rows.length) {
+    host.replaceChildren(emptyState("∅", q ? "Aucun produit comparable ne correspond à la recherche."
+      : "Aucun produit commun aux deux enseignes pour l'instant : ajoutez un rayon Carrefour proche des best-sellers Mon Marché."));
+    return;
+  }
+  // Écart moyen (moyenne géométrique des rapports SB / SA), et qui gagne combien de fois
+  const geo = Math.exp(rows.reduce((a, r) => a + Math.log(r.b.v / r.a.v), 0) / rows.length) - 1;
+  const winsB = rows.filter(r => cheaper(r).src === SB.id), winsA = rows.filter(r => cheaper(r).src === SA.id);
+  const tile = (lab, val, sub) => h("div", { class: "tile" }, h("div", { class: "lab" }, lab), h("div", { class: "val num", text: val }), h("div", { class: "sub", text: sub }));
+  const names = list => (list.length > 6 ? list.slice(0, 6).map(r => r.f.key).join(", ") + ` et ${list.length - 6} autres` : list.map(r => r.f.key).join(", ")) || "aucun produit";
+  const head = h("div", { class: "cmp-head" },
+    tile([srcDot(SB.id), ` ${SB.name} par rapport à ${SA.name}`], pct(geo), `en moyenne sur ${plural(rows.length, "produit comparable", "produits comparables")}`),
+    tile([srcDot(SB.id), ` Moins cher chez ${SB.name}`], nf0.format(winsB.length), names(winsB)),
+    tile([srcDot(SA.id), ` Moins cher chez ${SA.name}`], nf0.format(winsA.length), names(winsA)));
+
+  const maxD = Math.max(...rows.map(r => Math.abs(cheaper(r).d)), 0.01);
+  const priceCell = (best, r, src) => h("td", { class: "r pv" + (cheaper(r).src === src ? " cheap" : "") },
+    h("b", { class: "num", text: perU(best.v, famUnit(r)) }), h("small", { text: best.p.name }),
+    cheaper(r).src === src ? h("small", { class: "pct-m num", text: pct(cheaper(r).d) }) : null);   // téléphone : l'écart sous le prix
+  const table = h("table", { class: "cmp-table" },
+    h("thead", {}, h("tr", {},
+      h("th", { style: "cursor:default", text: "Produit" }),
+      h("th", { class: "r", style: "cursor:default" }, srcDot(SA.id), SA.name),
+      h("th", { class: "r", style: "cursor:default" }, srcDot(SB.id), SB.name),
+      h("th", { style: "cursor:default", text: `◀ ${SA.name} moins cher · ${SB.name} moins cher ▶` }),
+      h("th", { style: "cursor:default", text: "Tendance" }))),
+    h("tbody", {}, rows.slice(0, state.showAllCmp || q ? rows.length : CMP_LIMIT).map(r => {
+      const c = cheaper(r);
+      const w = `${(Math.abs(c.d) / maxD * 48).toFixed(2)}%`;
+      return h("tr", { onclick: () => openFamily(r) },
+        h("td", { class: "fam" }, h("b", { text: r.f.key }), h("small", { text: famPhrase(r) })),
+        priceCell(r.a, r, SA.id),
+        priceCell(r.b, r, SB.id),
+        h("td", {}, h("div", { class: "gapcell" },
+          h("div", { class: "gap" }, c.src ? h("div", { class: "gbar " + c.src, style: `width:${w}` }) : null),
+          h("span", { class: "gaptxt num" }, ...cheaperText(r)))),
+        h("td", {}, famSpark(r)));
+    })));
+  host.replaceChildren(head, h("div", { class: "tablewrap" }, table),
+    rows.length > CMP_LIMIT && !q ? h("button", { type: "button", class: "more", text: state.showAllCmp ? "Réduire" : `Voir les ${rows.length} produits comparés`,
+      onclick: () => { state.showAllCmp = !state.showAllCmp; renderCompare(); } }) : null,
+    CMP_OFF.length ? h("p", { class: "cmp-note", text: `Pas d'unité commune (kilo d'un côté, pièce sans poids ou pack sans prix au litre de l'autre) : ${CMP_OFF.map(f => f.key).join(", ")}.` }) : null);
+}
+
+/* ───────────────────────── Fiche produit ───────────────────────── */
+const drawer = document.getElementById("drawer");
+const scrim = document.getElementById("scrim");
+let lastFocus = null;
+function showDrawer(hash, ...content) {
+  drawer.replaceChildren(...content);
+  history.replaceState(null, "", hash);
+  drawer.classList.add("open");
+  scrim.classList.add("open");
+  document.body.style.overflow = "hidden";
+  drawer.scrollTop = 0;
+}
+const closeBtn = () => h("button", { type: "button", class: "close", "aria-label": "Fermer", text: "×", onclick: closeDrawer });
+
+function openFamily(r) {
+  hideTip();
+  if (!drawer.classList.contains("open")) lastFocus = document.activeElement;
+  const chart = h("div", { class: "chart" });
+  const c = cheaper(r);
+  const unitLbl = "€/" + famUnit(r);
+  const member = p => {
+    const v = famValue(p, p.cur, r.unit);
+    return h("button", { type: "button", class: "row-btn", onclick: () => openDrawer(p) },
+      h("div", { style: "min-width:0" }, h("div", { class: "t" }, srcDot(p.src), " ", p.name),
+        h("div", { class: "s", text: [SRC_NAME[p.src], p.unit, p.country].filter(Boolean).join(" · ") })),
+      h("div", { class: "r num" }, h("span", { class: "big", text: v != null ? perU(v, famUnit(r)) : "—" }), h("span", { class: "s", text: eur(p.cur.price) })));
+  };
+  const members = r.f.members.filter(p => p.cur).sort((x, y) => SOURCES.findIndex(s => s.id === x.src) - SOURCES.findIndex(s => s.id === y.src)
+    || (famValue(x, x.cur, r.unit) ?? 1e9) - (famValue(y, y.cur, r.unit) ?? 1e9));
+  const stat = (lab, v) => h("div", { class: "stat" }, h("div", { class: "lab" }, lab), h("div", { class: "v num" }, v));
+  showDrawer("#comparer=" + encodeURIComponent(r.f.key),
+    h("div", { class: "dtop" }, closeBtn()),
+    h("div", { class: "dbody" },
+      h("div", {},
+        h("div", { class: "dkick", text: `Comparaison ${SA.name} × ${SB.name}` }),
+        h("h2", { text: r.f.key }),
+        h("p", { class: "dshort" }, c.src ? [`Moins cher chez ${SRC_NAME[c.src]} : `, h("b", { text: pct(c.d) }), ` ${famPhrase(r)}, prix le plus bas de chaque enseigne hors promo.`] : "Même prix chez les deux enseignes.")),
+      h("div", { class: "stats", style: "grid-template-columns:repeat(3,1fr)" },
+        stat([srcDot(SA.id), " " + SA.name], perU(r.a.v, famUnit(r))),
+        stat([srcDot(SB.id), " " + SB.name], perU(r.b.v, famUnit(r))),
+        stat("Écart", c.src ? pct(c.d) : "=")),
+      h("div", { class: "dsec" },
+        h("h3", {}, `Prix le plus bas ${famPhrase(r)}, hors promo`,
+          h("span", { class: "legend" },
+            h("span", {}, h("i", { class: "key-line", style: "background:var(--mm)" }), SA.name),
+            h("span", {}, h("i", { class: "key-line", style: "background:var(--cf)" }), SB.name))),
+        chart),
+      h("div", { class: "dsec" }, h("h3", { text: "Les produits comparés" }), h("div", { class: "list" }, members.map(member)))));
+  requestAnimationFrame(() => {
+    lineChart(chart, {
+      height: 220, fmt: (v, axis) => (axis ? nf2.format(v) : nf2.format(v) + NB + unitLbl),
+      series: [
+        { label: SA.name, color: "var(--mm)", width: 2, pts: famSeries(r.f, r.unit, SA.id), tip: true, endDot: true },
+        { label: SB.name, color: "var(--cf)", width: 2, pts: famSeries(r.f, r.unit, SB.id), tip: true, endDot: true },
+      ],
+    });
+    drawer.querySelector(".close").focus();
+  });
+}
+
+function openDrawer(p) {
+  hideTip();
+  if (!drawer.classList.contains("open")) lastFocus = document.activeElement;
+  const c = p.cur || p.hist.at(-1);
+  const usesKg = p.hist.some(x => x.rup != null);
+  const normalPts = p.hist.map(x => [x.i, usesKg ? x.rup : x.reg]).filter(x => x[1] != null);
+  const paidPts = p.hist.map(x => [x.i, usesKg ? x.up : x.price]).filter(x => x[1] != null);
+  const hadPromo = p.hist.some(x => x.promo && (usesKg ? x.up !== x.rup : x.price !== x.reg));
+  const vals = normalPts.map(x => x[1]);
+  const first = normalPts[0]?.[1], lastV = normalPts.at(-1)?.[1];
+  const unitLbl = usesKg ? "€/" + (p.pu || "kg") : "€";
+  const fmtV = (v, axis) => (axis ? nf2.format(v) : nf2.format(v) + NB + unitLbl);
+  const rating = p.rating ? `★ ${nf1.format(p.rating)}` : "—";
+  const attrs = Object.entries(p.attrs || {}).filter(([, v]) => v && v !== "None" && !/^aucun\b/i.test(v));
+  const link = safeUrl(p.url);
+  const chart = h("div", { class: "chart" });
+  const where = p.src === "mm" ? "des best-sellers" : "du rayon";
+  const fam = CMP.find(r => r.f.ids.includes(p.id));
+  const other = fam && (p.src === SA.id ? fam.b : fam.a);
+
+  showDrawer("#produit=" + encodeURIComponent(p.id),
+    h("div", { class: "dtop" }, thumb(p.img, 160, 160) ? img(p.img, 160, 160, p.name) : null, closeBtn()),
+    h("div", { class: "dbody" },
+      h("div", {},
+        h("div", { class: "dkick", text: [SOURCES.length > 1 ? SRC_NAME[p.src] : null,
+          p.cur ? `N°${c.rank} ${where} ${AISLE_NAME[p.aisle]}` : `Plus dans les ${p.src === "mm" ? "best-sellers" : "produits du rayon"} ${AISLE_NAME[p.aisle]}`, p.cat].filter(Boolean).join(" · ") }),
+        h("h2", { text: p.name }),
+        p.short ? h("p", { class: "dshort", text: p.short }) : null),
+      h("div", { class: "pills" },
+        h("span", { class: "pill", text: originText(p) }),
+        p.brand ? h("span", { class: "pill" }, "Marque ", h("b", { text: p.brand })) : null,
+        p.variety ? h("span", { class: "pill" }, "Variété ", h("b", { text: p.variety })) : null,
+        p.caliber ? h("span", { class: "pill" }, "Calibre ", h("b", { text: p.caliber })) : null,
+        p.quality ? h("span", { class: "pill" }, "Catégorie ", h("b", { text: p.quality })) : null,
+        p.fresh ? h("span", { class: "pill" }, "Fraîcheur garantie ", h("b", { text: `${p.fresh} j` })) : null,
+        (p.labels || []).map(l => h("span", { class: "pill label", text: l }))),
+      h("div", { class: "dprice num" },
+        h("span", { class: "p", text: eur(c.price) }),
+        c.promo && c.reg > c.price ? h("span", { class: "old", text: eur(c.reg) }) : null,
+        c.up != null ? h("span", { class: "kg", text: perU(c.up, p.pu) }) : null,
+        h("span", { class: "punit", style: "width:100%", text: p.unit || "" }),
+        c.promo ? h("span", { class: "until", text: `Promo ${c.promo}` + (c.promoEnd ? ` jusqu'au ${day(c.promoEnd)}` : "") }) : null),
+      other ? h("div", { class: "vs" },
+        h("div", {}, srcDot(other.p.src), ` Chez ${SRC_NAME[other.p.src]} : `, h("b", { class: "num", text: perU(other.v, famUnit(fam)) }), ` · ${other.p.name}`),
+        h("button", { type: "button", class: "more", style: "margin:0", text: "Comparer", onclick: () => openFamily(fam) }),
+        h("div", { class: "s" }, ...cheaperText(fam), ` · prix le plus bas de chaque enseigne ${famPhrase(fam)}, hors promo`)) : null,
+      h("div", { class: "stats" },
+        h("div", { class: "stat" }, h("div", { class: "lab", text: `Min ${unitLbl} normal` }), h("div", { class: "v num", text: vals.length ? nf2.format(Math.min(...vals)) : "—" })),
+        h("div", { class: "stat" }, h("div", { class: "lab", text: `Max ${unitLbl} normal` }), h("div", { class: "v num", text: vals.length ? nf2.format(Math.max(...vals)) : "—" })),
+        h("div", { class: "stat" }, h("div", { class: "lab", text: `Depuis le ${shortDay(DATES[p.hist[0].i])}` }), h("div", { class: "v" }, normalPts.length > 1 ? deltaChip(lastV / first - 1) : h("span", { class: "punit", text: "1 relevé" }))),
+        h("div", { class: "stat" }, h("div", { class: "lab", text: p.ratingCount ? `${p.ratingCount} avis` : "Note" }), h("div", { class: "v", text: rating }))),
+      h("div", { class: "dsec" },
+        h("h3", {}, `Historique du prix ${usesKg ? unitPhrase(p.pu || "kg") : ""}`,
+          h("span", { class: "legend" },
+            h("span", {}, h("i", { class: "key-line", style: "background:var(--citron)" }), "Prix normal"),
+            hadPromo ? h("span", {}, h("i", { class: "key-line", style: "background:var(--promo)" }), "Prix payé (promo)") : null)),
+        chart),
+      p.desc ? h("div", { class: "dsec" }, h("h3", { text: "Description" }), h("p", { class: "ddesc", text: p.desc })) : null,
+      attrs.length ? h("div", { class: "dsec" }, h("h3", { text: "Caractéristiques" }),
+        h("dl", { class: "attrs" }, attrs.map(([k, v]) => [h("dt", { text: k }), h("dd", { text: v })]))) : null,
+      h("div", { class: "dsec" }, h("h3", { text: "Relevés" }),
+        h("div", { class: "tablewrap" }, h("table", {},
+          h("thead", {}, h("tr", {}, ["Date", "Prix", unitLbl, "Normal", "Promo", "Rang"].map((t, k) => h("th", { class: k && k !== 4 ? "r" : null, style: "cursor:default", text: t })))),
+          h("tbody", {}, [...p.hist].reverse().map(x => h("tr", { style: "cursor:default" },
+            h("td", { text: day(DATES[x.i]) }),
+            h("td", { class: "r num", text: eur(x.price) }),
+            h("td", { class: "r num", text: usesKg ? (x.up != null ? nf2.format(x.up) : "—") : eur(x.price) }),
+            h("td", { class: "r num", text: eur(x.reg) }),
+            h("td", {}, x.promo ? h("span", { class: "tag", style: "font-size:11.5px;padding:2px 6px 1px", text: x.promo }) : ""),
+            h("td", { class: "r num", text: x.rank ?? "" }))))))),
+      link ? h("a", { class: "cta", href: link, target: "_blank", rel: "noopener noreferrer" }, `Voir sur ${SRC_SITE[p.src] || "le site"} ↗`) : null));
+
+  requestAnimationFrame(() => {
+    lineChart(chart, {
+      height: 220, fmt: fmtV,
+      series: [
+        ...(hadPromo ? [{ label: "Prix payé", color: "var(--promo)", width: 2, pts: paidPts, tip: true }] : []),
+        { label: "Prix normal", color: "var(--citron)", width: 2, pts: normalPts, tip: true, endDot: true },
+      ],
+    });
+    drawer.querySelector(".close").focus();
+  });
+}
+function closeDrawer() {
+  history.replaceState(null, "", location.pathname + location.search);
+  drawer.classList.remove("open");
+  scrim.classList.remove("open");
+  document.body.style.overflow = "";
+  hideTip();
+  if (lastFocus && lastFocus.focus) lastFocus.focus();
+}
+scrim.addEventListener("click", closeDrawer);
+document.addEventListener("keydown", e => { if (e.key === "Escape" && drawer.classList.contains("open")) closeDrawer(); });
+
+/* ───────────────────────── Orchestration ───────────────────────── */
+function render() {
+  const list = visible();
+  const bi = baseIndex(state.compare);
+  renderSrcSeg();
+  renderChips();
+  seg(document.getElementById("compare"), COMPARE, state.compare, v => { state.compare = v; store.set("compare", v); render(); });
+  const pt = document.getElementById("promoToggle");
+  pt.classList.toggle("on", state.promo);
+  pt.setAttribute("aria-pressed", String(state.promo));
+  renderKpis(list, bi);
+  renderCompare();
+  renderIndex(list);
+  renderMovers(list, bi);
+  renderProducts(list, bi);
+  renderKgBars(list);
+  renderPromos(list);
+  renderOrigins(list);
+}
+
+document.getElementById("q").addEventListener("input", e => { state.q = e.target.value; render(); });
+document.getElementById("promoToggle").addEventListener("click", () => { state.promo = !state.promo; render(); });
+let resizeT;
+addEventListener("resize", () => { clearTimeout(resizeT); resizeT = setTimeout(() => renderIndex(visible()), 150); });
+
+renderHeader();
+render();
+const deepLink = decodeURIComponent((location.hash.match(/^#produit=(.+)$/) || [])[1] || "");
+const deepFamily = decodeURIComponent((location.hash.match(/^#comparer=(.+)$/) || [])[1] || "");
+if (deepLink && BY_ID[deepLink]) openDrawer(BY_ID[deepLink]);
+else if (deepFamily && CMP.find(r => r.f.key === deepFamily)) openFamily(CMP.find(r => r.f.key === deepFamily));
+</script>
+</body>
+</html>
