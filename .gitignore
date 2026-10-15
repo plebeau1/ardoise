@@ -1,13 +1,9 @@
-# Données : la source de vérité est le bucket gs://ardoise-mon-marche-data (data/ n'en est qu'une copie locale)
-data/
-exports/
-
-# Python / Firebase
+# Environnement Python local (121 Mo, propre à ce Mac) : se recrée avec
+#   cd functions && python3.12 -m venv venv && venv/bin/pip install -r requirements.txt
 functions/venv/
 __pycache__/
 *.pyc
-.firebase/
+
 firebase-debug*.log
 .env*
-
 .DS_Store

@@ -6,7 +6,8 @@ suit leur évolution et compare les deux enseignes sur les mêmes produits.
 Page en ligne : https://ardoise-mon-marche.web.app
 
 Tout tourne sur Firebase (projet `ardoise-mon-marche`) : deux Cloud Functions planifiées (7 h et 7 h 15) et une
-qui sert la page. Les bases SQLite vivent dans le bucket `gs://ardoise-mon-marche-data`, pas dans ce dépôt.
+qui sert la page. Les bases SQLite vivent dans le bucket `gs://ardoise-mon-marche-data` ; `data/` en est une copie
+datée (bases, relevés bruts, page générée), à rafraîchir avec `gcloud storage rsync -r gs://ardoise-mon-marche-data data/`.
 
 ```bash
 firebase deploy --only functions,hosting        # déployer

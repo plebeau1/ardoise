@@ -7,8 +7,10 @@ de saison), ~420 produits (liste `RAYONS` de `scraper_carrefour.py`, ~30 requêt
 dans une base à part. La page affiche les deux enseignes (filtre « Enseigne ») et les compare sur les mêmes produits.
 
 ## Architecture (100 % Firebase ; code sur GitHub privé `plebeau1/ardoise`, sans CI)
-- Le dépôt GitHub ne contient que le code : `data/` est ignoré, la vérité est dans le bucket. Pas d'action GitHub,
-  le déploiement se fait toujours à la main avec `firebase deploy`. Commits : `feat(module): …` en anglais.
+- Le dépôt contient tout sauf `functions/venv/` (à recréer, voir `.gitignore`). `data/` y est une COPIE datée du bucket
+  (`gcloud storage rsync -r gs://ardoise-mon-marche-data data/` puis commit pour la rafraîchir) : la vérité reste le
+  bucket, ne jamais y renvoyer la copie du dépôt (piège 7). Pas d'action GitHub, déploiement à la main avec
+  `firebase deploy`. Commits : `feat(module): …` en anglais.
 - Projet Firebase `ardoise-mon-marche` (forfait Blaze, facturation « l'agenda »), région `europe-west1`.
 - **Cloud Function `releve_quotidien`** (`functions/main.py`) : Cloud Scheduler, tous les jours à 7 h Europe/Paris.
   Télécharge la base du bucket → lance le scraper → régénère la page → renvoie base + page + archive brute dans le bucket.
