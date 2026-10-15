@@ -594,10 +594,11 @@ const store = {
   get(k, d) { try { return localStorage.getItem("ardoise:" + k) ?? d; } catch { return d; } },
   set(k, v) { try { localStorage.setItem("ardoise:" + k, v); } catch {} },
 };
-const defaultAisle = AISLES.some(a => a.slug === "best-sellers-fruits") ? "best-sellers-fruits" : "all";
 const state = {
-  src: SRC_NAME[store.get("src")] ? store.get("src") : "all",
-  aisle: AISLES.some(a => a.slug === store.get("aisle")) || store.get("aisle") === "all" ? store.get("aisle") : defaultAisle,
+  // Enseigne et rayon ne sont pas mémorisés : chaque visite ouvre sur tout le contenu (un filtre d'une visite
+  // précédente cachait les nouveaux rayons). Seules les préférences d'affichage (vue, tri, comparaison) restent.
+  src: "all",
+  aisle: "all",
   q: "",
   promo: false,
   compare: store.get("compare", "prev"),
@@ -607,8 +608,6 @@ const state = {
   showAllCmp: false,
 };
 
-// Rayon mémorisé d'une autre enseigne que celle choisie : on repart de « tous les rayons »
-if (state.src !== "all" && AISLES.find(a => a.slug === state.aisle)?.src !== state.src) state.aisle = "all";
 
 function baseIndex(mode) {
   if (LAST < 1) return null;
@@ -847,9 +846,9 @@ function renderSrcSeg() {
   host.replaceChildren(...[["all", "Toutes"], ...SOURCES.map(s => [s.id, s.name])].map(([val, label]) =>
     h("button", { type: "button", class: val === state.src ? "on" : null, "aria-pressed": String(val === state.src),
       onclick: () => {
-        state.src = val; store.set("src", val); state.showAllBars = false;
+        state.src = val; state.showAllBars = false;
         const aisle = AISLES.find(a => a.slug === state.aisle);
-        if (aisle && val !== "all" && aisle.src !== val) { state.aisle = "all"; store.set("aisle", "all"); }
+        if (aisle && val !== "all" && aisle.src !== val) state.aisle = "all";
         render();
       } },
       val !== "all" ? srcDot(val) : null, label)));
@@ -862,7 +861,7 @@ function renderChips() {
   const aisles = AISLES.filter(a => state.src === "all" || a.src === state.src);
   host.replaceChildren(...[{ slug: "all", name: "Tous les rayons" }, ...aisles].map(a =>
     h("button", { type: "button", role: "tab", class: "chip" + (state.aisle === a.slug ? " on" : ""), "aria-selected": String(state.aisle === a.slug),
-      onclick: () => { state.aisle = a.slug; state.showAllBars = false; store.set("aisle", a.slug); render(); } },
+      onclick: () => { state.aisle = a.slug; state.showAllBars = false; render(); } },
       a.src && state.src === "all" && SOURCES.length > 1 ? srcDot(a.src) : null, a.name, h("span", { class: "n", text: count(a.slug) }))));
   const active = host.querySelector(".on");
   const left = active ? active.getBoundingClientRect().left - host.getBoundingClientRect().left + host.scrollLeft : 0;

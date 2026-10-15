@@ -11,6 +11,7 @@ dans une base à part. La page affiche les deux enseignes (filtre « Enseigne »
   (`gcloud storage rsync -r gs://ardoise-mon-marche-data data/` puis commit pour la rafraîchir) : la vérité reste le
   bucket, ne jamais y renvoyer la copie du dépôt (piège 7). Pas d'action GitHub, déploiement à la main avec
   `firebase deploy`. Commits : `feat(module): …` en anglais.
+  **Après chaque modification : commit + push** (demande de Pierre), avec `data/` resynchronisé depuis le bucket.
 - Projet Firebase `ardoise-mon-marche` (forfait Blaze, facturation « l'agenda »), région `europe-west1`.
 - **Cloud Function `releve_quotidien`** (`functions/main.py`) : Cloud Scheduler, tous les jours à 7 h Europe/Paris.
   Télécharge la base du bucket → lance le scraper → régénère la page → renvoie base + page + archive brute dans le bucket.
