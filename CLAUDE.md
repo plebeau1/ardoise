@@ -6,7 +6,7 @@ Depuis le 2026-10-15, même relevé quotidien sur carrefour.fr : 13 rayons calqu
 de saison), ~420 produits (liste `RAYONS` de `scraper_carrefour.py`, ~30 requêtes, ~1 min),
 dans une base à part. La page affiche les deux enseignes (filtre « Enseigne ») et les compare sur les mêmes produits.
 
-## Architecture (100 % Firebase ; code sur GitHub privé `plebeau1/ardoise`, sans CI)
+## Architecture (100 % Firebase ; dépôt GitHub PUBLIC `plebeau1/ardoise`, sans CI)
 - Le dépôt contient tout sauf `functions/venv/` (à recréer, voir `.gitignore`). `data/` y est une COPIE datée du bucket
   (`gcloud storage rsync -r gs://ardoise-mon-marche-data data/` puis commit pour la rafraîchir) : la vérité reste le
   bucket, ne jamais y renvoyer la copie du dépôt (piège 7). Pas d'action GitHub, déploiement à la main avec
