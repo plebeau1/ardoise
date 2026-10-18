@@ -69,6 +69,8 @@ dans une base à part. La page affiche les deux enseignes (filtre « Enseigne »
 - **Cloudflare** bloque l'empreinte TLS de Python/curl/Chrome (403 « vérifiez que vous êtes humain ») mais laisse passer
   Safari : `curl_cffi` avec `impersonate="safari17_0"`. Testé OK depuis le Mac ET depuis Google Cloud (2026-10-15).
   `chrome110` passe du Mac mais pas du cloud. Si bloqué un jour : essayer `safari15_5` (constante `IMPERSONATE`).
+  Blocages ponctuels depuis le cloud : le 2026-10-17, les 3 tentatives ont pris un 403 Cloudflare → pas de relevé ce
+  jour-là (base intacte, comme prévu) ; le 18 est repassé normalement.
 
 ## Pièges (les violer fausse les prix)
 1. **`packSize` > 1 ("par 4")** : `itemPrice` et le poids sont ceux d'UNE pièce. Le site affiche le lot → multiplier par `packSize`. `perWeightUnit.net` (prix au kg) n'est pas à multiplier.
