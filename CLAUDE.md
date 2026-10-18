@@ -13,6 +13,9 @@ dans une base à part. La page affiche les deux enseignes (filtre « Enseigne »
   `firebase deploy`. Commits : `feat(module): …` en anglais.
   **Après chaque modification : commit + push** (demande de Pierre), avec `data/` resynchronisé depuis le bucket.
 - Projet Firebase `ardoise-mon-marche` (forfait Blaze, facturation « l'agenda »), région `europe-west1`.
+- **Relevés automatiques EN PAUSE depuis le 2026-10-18** (demande de Pierre) : les deux jobs Cloud Scheduler sont
+  « PAUSED », le site sert la dernière page (relevé du 18/10). Relancer : commande `resume` plus bas. Un
+  `firebase deploy` pourrait les réactiver : après chaque déploiement, vérifier leur état (`jobs list`).
 - **Cloud Function `releve_quotidien`** (`functions/main.py`) : Cloud Scheduler, tous les jours à 7 h Europe/Paris.
   Télécharge la base du bucket → lance le scraper → régénère la page → renvoie base + page + archive brute dans le bucket.
   Rien n'est renvoyé si le relevé plante : la base du bucket reste intacte (2 nouvelles tentatives automatiques).
@@ -91,6 +94,8 @@ Carrefour :
 ## Commandes
 ```bash
 firebase deploy --only functions,hosting          # déployer (depuis la racine)
+gcloud scheduler jobs list --location=europe-west1 --project=ardoise-mon-marche   # état des relevés automatiques (PAUSED / ENABLED)
+gcloud scheduler jobs resume firebase-schedule-releve_quotidien-europe-west1 --location=europe-west1 --project=ardoise-mon-marche   # relancer (pause : `pause`) ; idem releve_carrefour
 gcloud scheduler jobs run firebase-schedule-releve_quotidien-europe-west1 --location=europe-west1 --project=ardoise-mon-marche   # relevé immédiat
 gcloud storage cp gs://ardoise-mon-marche-data/mon_marche.db data/   # récupérer la base cloud en local
 python3 evolution.py --rayon fruits               # puis consulter en terminal / --csv pour Excel
